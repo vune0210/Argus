@@ -1,0 +1,233 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Argus Control Plane API",
+    "version": "0.1.0",
+    "description": "Week-one public contract. HTTP monitors are the only executable monitor kind."
+  },
+  "servers": [{ "url": "http://localhost:4000" }],
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "security": [],
+        "operationId": "getLiveness",
+        "responses": { "200": { "description": "Process is live", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } } }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "security": [],
+        "operationId": "getReadiness",
+        "responses": {
+          "200": { "description": "Dependencies are ready", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } } },
+          "503": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/auth/bootstrap": {
+      "post": {
+        "operationId": "bootstrapIdentity",
+        "responses": {
+          "200": { "description": "Current user and default organization", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BootstrapResponse" } } } },
+          "401": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/monitors": {
+      "parameters": [{ "$ref": "#/components/parameters/OrganizationHeader" }],
+      "get": {
+        "operationId": "listMonitors",
+        "parameters": [
+          { "name": "cursor", "in": "query", "schema": { "type": "string" } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50 } }
+        ],
+        "responses": {
+          "200": { "description": "Page of monitors", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MonitorPage" } } } },
+          "401": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "post": {
+        "operationId": "createMonitor",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateMonitorRequest" } } } },
+        "responses": {
+          "201": { "description": "Monitor created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Monitor" } } } },
+          "400": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/monitors/{id}": {
+      "parameters": [
+        { "$ref": "#/components/parameters/OrganizationHeader" },
+        { "$ref": "#/components/parameters/MonitorId" }
+      ],
+      "get": {
+        "operationId": "getMonitor",
+        "responses": {
+          "200": { "description": "Monitor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Monitor" } } } },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "patch": {
+        "operationId": "updateMonitor",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UpdateMonitorRequest" } } } },
+        "responses": {
+          "200": { "description": "Updated monitor", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Monitor" } } } },
+          "400": { "$ref": "#/components/responses/Error" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "409": { "$ref": "#/components/responses/Error" }
+        }
+      },
+      "delete": {
+        "operationId": "deleteMonitor",
+        "responses": {
+          "204": { "description": "Monitor deleted" },
+          "403": { "$ref": "#/components/responses/Error" },
+          "404": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    },
+    "/api/v1/monitors/{id}/run": {
+      "parameters": [
+        { "$ref": "#/components/parameters/OrganizationHeader" },
+        { "$ref": "#/components/parameters/MonitorId" }
+      ],
+      "post": {
+        "operationId": "runMonitor",
+        "description": "Reserved for week two; returns a stable not-implemented error in week one.",
+        "responses": {
+          "501": { "$ref": "#/components/responses/Error" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" }
+    },
+    "parameters": {
+      "OrganizationHeader": {
+        "name": "X-Argus-Organization-Id",
+        "in": "header",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      },
+      "MonitorId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string", "format": "uuid" }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Structured error",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorEnvelope" } } }
+      }
+    },
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "service", "timestamp"],
+        "properties": {
+          "status": { "enum": ["ok", "unavailable"] },
+          "service": { "type": "string" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "HttpMonitorConfig": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "url", "method", "timeoutMs", "expectedStatus", "maxRedirects", "maxResponseBytes"],
+        "properties": {
+          "kind": { "const": "http" },
+          "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+          "method": { "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] },
+          "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+          "expectedStatus": { "type": "integer", "minimum": 100, "maximum": 599 },
+          "maxRedirects": { "type": "integer", "minimum": 0, "maximum": 10 },
+          "maxResponseBytes": { "type": "integer", "minimum": 1, "maximum": 1048576 }
+        }
+      },
+      "Monitor": {
+        "type": "object",
+        "required": ["id", "organizationId", "name", "intervalSeconds", "regions", "healthState", "version", "config", "createdAt", "updatedAt", "createdBy", "updatedBy"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "organizationId": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "intervalSeconds": { "type": "integer", "minimum": 60 },
+          "regions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+          "healthState": { "enum": ["UNKNOWN", "HEALTHY", "DEGRADED", "PENDING_DOWN", "DOWN", "PENDING_RECOVERY"] },
+          "version": { "type": "integer", "minimum": 1 },
+          "config": { "$ref": "#/components/schemas/HttpMonitorConfig" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "createdBy": { "type": "string" },
+          "updatedBy": { "type": "string" }
+        }
+      },
+      "CreateMonitorRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "intervalSeconds", "regions", "config"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+          "intervalSeconds": { "type": "integer", "minimum": 60 },
+          "regions": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+          "config": { "$ref": "#/components/schemas/HttpMonitorConfig" }
+        }
+      },
+      "UpdateMonitorRequest": {
+        "allOf": [
+          { "$ref": "#/components/schemas/CreateMonitorRequest" },
+          {
+            "type": "object",
+            "required": ["version"],
+            "properties": { "version": { "type": "integer", "minimum": 1 } }
+          }
+        ]
+      },
+      "MonitorPage": {
+        "type": "object",
+        "required": ["items"],
+        "properties": {
+          "items": { "type": "array", "items": { "$ref": "#/components/schemas/Monitor" } },
+          "nextCursor": { "type": ["string", "null"] }
+        }
+      },
+      "BootstrapResponse": {
+        "type": "object",
+        "required": ["user", "organization"],
+        "properties": {
+          "user": {
+            "type": "object",
+            "required": ["id", "email"],
+            "properties": { "id": { "type": "string" }, "email": { "type": "string", "format": "email" } }
+          },
+          "organization": {
+            "type": "object",
+            "required": ["id", "name", "role"],
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "name": { "type": "string" },
+              "role": { "enum": ["OWNER", "ADMIN", "RESPONDER", "VIEWER"] }
+            }
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": ["code", "message", "traceId"],
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "details": {},
+          "traceId": { "type": "string" }
+        }
+      }
+    }
+  }
+}

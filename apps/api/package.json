@@ -1,0 +1,40 @@
+{
+  "name": "@argus/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "worker": "tsx src/worker.ts",
+    "start:worker": "node dist/worker.js",
+    "db:migrate": "tsx src/database/migrate.ts",
+    "probe:register": "tsx src/pipeline/register-probe.ts",
+    "db:backfill-raw": "tsx src/pipeline/backfill-raw.ts",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --no-file-parallelism"
+  },
+  "dependencies": {
+    "@argus/contracts": "workspace:*",
+    "@argus/domain": "workspace:*",
+    "@aws-sdk/client-secrets-manager": "^3.1127.0",
+    "@aws-sdk/client-sesv2": "^3.1127.0",
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "aws-jwt-verify": "^5.1.0",
+    "pg": "^8.16.3",
+    "redis": "^5.8.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.0",
+    "@types/pg": "^8.15.5",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

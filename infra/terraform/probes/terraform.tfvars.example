@@ -1,0 +1,11 @@
+# Replace these placeholders. Example URL is intentionally rejected by validation.
+environment       = "staging"
+control_plane_url = "https://api.example.invalid"
+desired_count     = 0
+image_digest      = ""
+probe_secret_arns = {
+  ap-southeast-1 = "arn:aws:secretsmanager:ap-southeast-1:123456789012:secret:replace-me"
+  ap-northeast-1 = "arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:replace-me"
+  eu-central-1   = "arn:aws:secretsmanager:eu-central-1:123456789012:secret:replace-me"
+}
+probe_kms_key_arns = {}

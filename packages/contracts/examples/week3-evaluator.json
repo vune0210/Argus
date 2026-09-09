@@ -1,0 +1,266 @@
+[
+  {
+    "name": "all-pass",
+    "outcomes": [
+      "PASS",
+      "PASS",
+      "PASS"
+    ],
+    "input": {
+      "state": "HEALTHY",
+      "kind": "SCHEDULED",
+      "sequence": 11,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "QUORUM_PASS",
+      "state": "HEALTHY",
+      "applied": true
+    }
+  },
+  {
+    "name": "one-failure",
+    "outcomes": [
+      "FAIL",
+      "PASS",
+      "PASS"
+    ],
+    "input": {
+      "state": "HEALTHY",
+      "kind": "SCHEDULED",
+      "sequence": 11,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "SINGLE_REGION_FAILURE",
+      "state": "DEGRADED",
+      "applied": true
+    }
+  },
+  {
+    "name": "quorum-failure",
+    "outcomes": [
+      "FAIL",
+      "FAIL",
+      null
+    ],
+    "input": {
+      "state": "HEALTHY",
+      "kind": "SCHEDULED",
+      "sequence": 11,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "QUORUM_FAILURE",
+      "state": "PENDING_DOWN",
+      "applied": true
+    }
+  },
+  {
+    "name": "missing-region",
+    "outcomes": [
+      "PASS",
+      "PASS",
+      null
+    ],
+    "input": {
+      "state": "HEALTHY",
+      "kind": "SCHEDULED",
+      "sequence": 11,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "INSUFFICIENT_RESULTS",
+      "state": "DEGRADED",
+      "applied": true
+    }
+  },
+  {
+    "name": "duplicate-evaluation",
+    "outcomes": [
+      "FAIL",
+      "FAIL",
+      "PASS"
+    ],
+    "input": {
+      "state": "HEALTHY",
+      "kind": "SCHEDULED",
+      "sequence": 10,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "QUORUM_FAILURE",
+      "state": "HEALTHY",
+      "applied": false
+    }
+  },
+  {
+    "name": "older-execution",
+    "outcomes": [
+      "FAIL",
+      "FAIL",
+      "PASS"
+    ],
+    "input": {
+      "state": "HEALTHY",
+      "kind": "SCHEDULED",
+      "sequence": 9,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "QUORUM_FAILURE",
+      "state": "HEALTHY",
+      "applied": false
+    }
+  },
+  {
+    "name": "old-config",
+    "outcomes": [
+      "FAIL",
+      "FAIL",
+      "PASS"
+    ],
+    "input": {
+      "state": "HEALTHY",
+      "kind": "SCHEDULED",
+      "sequence": 11,
+      "lastSequence": 10,
+      "currentVersion": 2,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "QUORUM_FAILURE",
+      "state": "HEALTHY",
+      "applied": false
+    }
+  },
+  {
+    "name": "manual-check",
+    "outcomes": [
+      "FAIL",
+      "FAIL",
+      "PASS"
+    ],
+    "input": {
+      "state": "HEALTHY",
+      "kind": "MANUAL",
+      "sequence": 11,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "QUORUM_FAILURE",
+      "state": "HEALTHY",
+      "applied": false
+    }
+  },
+  {
+    "name": "second-failure",
+    "outcomes": [
+      "FAIL",
+      "FAIL",
+      "PASS"
+    ],
+    "input": {
+      "state": "PENDING_DOWN",
+      "kind": "SCHEDULED",
+      "sequence": 11,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "QUORUM_FAILURE",
+      "state": "DOWN",
+      "applied": true
+    }
+  },
+  {
+    "name": "first-recovery",
+    "outcomes": [
+      "PASS",
+      "PASS",
+      "PASS"
+    ],
+    "input": {
+      "state": "DOWN",
+      "kind": "SCHEDULED",
+      "sequence": 11,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "QUORUM_PASS",
+      "state": "PENDING_RECOVERY",
+      "applied": true
+    }
+  },
+  {
+    "name": "second-recovery",
+    "outcomes": [
+      "PASS",
+      "PASS",
+      "PASS"
+    ],
+    "input": {
+      "state": "PENDING_RECOVERY",
+      "kind": "SCHEDULED",
+      "sequence": 11,
+      "lastSequence": 10,
+      "currentVersion": 1,
+      "executionVersion": 1,
+      "flappingUntil": null,
+      "recentTransitions": []
+    },
+    "now": 1000000,
+    "expected": {
+      "observation": "QUORUM_PASS",
+      "state": "HEALTHY",
+      "applied": true
+    }
+  }
+]

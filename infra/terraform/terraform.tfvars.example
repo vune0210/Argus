@@ -1,0 +1,6 @@
+aws_region            = "ap-southeast-1"
+environment           = "staging"
+name_prefix           = "argus"
+cognito_domain_prefix = "replace-with-a-globally-unique-prefix"
+cognito_callback_urls = ["https://staging.argus.example/api/auth/callback"]
+cognito_logout_urls   = ["https://staging.argus.example/login"]

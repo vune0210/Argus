@@ -1,0 +1,10 @@
+# Replace aliases with the team's real GitHub handles.
+/packages/contracts/ @argus/tech-lead
+/packages/domain/ @argus/tech-lead
+/docs/adr/ @argus/tech-lead
+/apps/api/ @argus/backend
+/agents/probe/ @argus/distributed
+/apps/web/ @argus/frontend
+/.github/ @argus/platform
+/infra/ @argus/platform
+/docker-compose.yml @argus/platform

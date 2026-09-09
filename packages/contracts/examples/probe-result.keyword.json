@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "0.2",
+  "executionId": "0e6bc903-8824-4f24-9b22-83b53cfa11d4",
+  "organizationId": "50dd02a1-5d07-4e08-98e3-05ecbc8eef1b",
+  "monitorId": "e5512bc8-b210-4f51-b0e5-79a0bfa1841e",
+  "monitorVersion": 1,
+  "probeId": "dev-eu-central-1",
+  "region": "eu-central-1",
+  "startedAt": "2026-09-08T08:00:01Z",
+  "completedAt": "2026-09-08T08:00:01.215Z",
+  "durationMs": 215,
+  "outcome": "PASS",
+  "keyword": {
+    "statusCode": 200,
+    "responseBytes": 1420,
+    "matched": true
+  }
+}

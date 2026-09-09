@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://argus.local/schemas/probe-result.schema.json",
+  "title": "ProbeResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "executionId", "organizationId", "monitorId", "monitorVersion", "probeId", "region", "startedAt", "completedAt", "durationMs", "outcome"],
+  "properties": {
+    "schemaVersion": { "enum": ["0.1", "0.2"] },
+    "executionId": { "type": "string", "format": "uuid" },
+    "organizationId": { "type": "string", "format": "uuid" },
+    "monitorId": { "type": "string", "format": "uuid" },
+    "monitorVersion": { "type": "integer", "minimum": 1 },
+    "probeId": { "type": "string", "minLength": 1 },
+    "region": { "type": "string", "minLength": 1 },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "outcome": { "enum": ["PASS", "FAIL"] },
+    "errorCode": { "enum": ["DNS", "CONNECT", "TIMEOUT", "TLS", "ASSERTION", "RESPONSE_TOO_LARGE", "SSRF_BLOCKED", "INTERNAL"] },
+    "errorMessage": { "type": "string" },
+    "http": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statusCode", "responseBytes"],
+      "properties": {
+        "statusCode": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "responseBytes": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "tcp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connected"],
+      "properties": {
+        "connected": { "type": "boolean" }
+      }
+    },
+    "ssl": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expiresAt", "daysRemaining"],
+      "properties": {
+        "expiresAt": { "type": "string", "format": "date-time" },
+        "daysRemaining": { "type": "integer" }
+      }
+    },
+    "keyword": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["statusCode", "responseBytes", "matched"],
+      "properties": {
+        "statusCode": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "responseBytes": { "type": "integer", "minimum": 0 },
+        "matched": { "type": "boolean" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "outcome": { "const": "FAIL" } } },
+      "then": {
+        "properties": {
+          "errorCode": true,
+          "errorMessage": true
+        },
+        "required": ["errorCode", "errorMessage"]
+      }
+    }
+  ]
+}

@@ -1,0 +1,3456 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Argus Control Plane API",
+    "version": "0.2.0",
+    "description": "Execution pipeline and incident/status page contract. Public URL v1; ProbeJob and ProbeResult v0.2."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000"
+    }
+  ],
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "security": [],
+        "operationId": "getLiveness",
+        "responses": {
+          "200": {
+            "description": "Process is live",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "security": [],
+        "operationId": "getReadiness",
+        "responses": {
+          "200": {
+            "description": "Dependencies are ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/bootstrap": {
+      "post": {
+        "operationId": "bootstrapIdentity",
+        "responses": {
+          "200": {
+            "description": "Current user and default organization",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/monitors": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        }
+      ],
+      "get": {
+        "operationId": "listMonitors",
+        "parameters": [
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of monitors",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMonitor",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMonitorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Monitor created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Monitor"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/monitors/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "$ref": "#/components/parameters/MonitorId"
+        }
+      ],
+      "get": {
+        "operationId": "getMonitor",
+        "responses": {
+          "200": {
+            "description": "Monitor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Monitor"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMonitor",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMonitorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated monitor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Monitor"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteMonitor",
+        "responses": {
+          "204": {
+            "description": "Monitor deleted"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/monitors/{id}/run": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "runMonitor",
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionSummary"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/monitors/{id}/executions": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "listExecutions",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/executions/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getExecution",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/incidents": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        }
+      ],
+      "get": {
+        "operationId": "listIncidents",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/incidents/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getIncident",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/probe-leases": {
+      "parameters": [],
+      "post": {
+        "operationId": "acquireLease",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProbeLease"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No work available"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "probeBearer": []
+          }
+        ],
+        "description": "Long-poll up to 25 seconds; no organization ID accepted."
+      }
+    },
+    "/api/v1/probe-leases/{id}/heartbeat": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "heartbeatLease",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaseHeartbeat"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "probeBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/probe-leases/{id}/result": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "submitResult",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResultReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          },
+          "410": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "security": [
+          {
+            "probeBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProbeResult"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{organizationId}/events": {
+      "get": {
+        "operationId": "streamEvents",
+        "parameters": [
+          {
+            "name": "organizationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE event envelope. 24h replay, system.resync_required for unknown/expired cursor.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        },
+        "description": "Tenant-scoped durable invalidations: probe.result_received {executionId, monitorId, region}, execution.completed, monitor.health_changed, incident.opened/resolved. Re-fetch REST snapshot on events; system.resync_required also closes the initial snapshot/subscribe race. Last-Event-ID is an opaque UUID, not a sortable revision. Heartbeat comments are transport keepalive, not probe health."
+      }
+    },
+    "/api/v1/monitors/{id}/snapshot": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getMonitorSnapshot",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorSnapshot"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/incidents/{id}/ack": {
+      "post": {
+        "operationId": "acknowledgeIncident",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OrganizationHeader"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Incident acknowledged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Incident"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/incidents/{id}/resolve": {
+      "post": {
+        "operationId": "resolveIncident",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/OrganizationHeader"
+          },
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Incident resolved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Incident"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/notification-channels": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        }
+      ],
+      "get": {
+        "operationId": "listNotificationChannels",
+        "responses": {
+          "200": {
+            "description": "List of notification channels",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationChannelPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createNotificationChannel",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateNotificationChannelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Channel created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/notification-channels/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getNotificationChannel",
+        "responses": {
+          "200": {
+            "description": "Notification channel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationChannel"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateNotificationChannel",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotificationChannelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Channel updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteNotificationChannel",
+        "responses": {
+          "204": {
+            "description": "Channel deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "deprecated": true,
+        "operationId": "patchNotificationChannel",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateNotificationChannelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Channel updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationChannel"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/escalation-policy": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        }
+      ],
+      "get": {
+        "operationId": "getEscalationPolicy",
+        "responses": {
+          "200": {
+            "description": "Organization escalation policy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EscalationPolicy"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateEscalationPolicy",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEscalationPolicyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Escalation policy updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EscalationPolicy"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/status-pages": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        }
+      ],
+      "get": {
+        "operationId": "listStatusPages",
+        "responses": {
+          "200": {
+            "description": "List of status pages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusPageListPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "post": {
+        "operationId": "createStatusPage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateStatusPageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Status page created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/status-pages/{id}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "operationId": "getStatusPage",
+        "responses": {
+          "200": {
+            "description": "Status page detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateStatusPage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusPageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status page updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteStatusPage",
+        "responses": {
+          "204": {
+            "description": "Status page deleted"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      },
+      "patch": {
+        "deprecated": true,
+        "operationId": "patchStatusPage",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStatusPageRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status page updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/status-pages/{id}/components": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "post": {
+        "operationId": "addStatusPageComponent",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddStatusPageComponentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Component added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusPageComponent"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/status-pages/{id}/components/{componentId}": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        {
+          "name": "componentId",
+          "in": "path",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "delete": {
+        "operationId": "removeStatusPageComponent",
+        "responses": {
+          "204": {
+            "description": "Component removed"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/public/v1/status-pages/{slug}": {
+      "get": {
+        "operationId": "getPublicStatusPage",
+        "security": [],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public status page data with zero internal secrets or identifiers",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicStatusPage"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/monitors/{id}/evaluate": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "$ref": "#/components/parameters/MonitorId"
+        }
+      ],
+      "post": {
+        "operationId": "evaluateMonitor",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvaluateMonitorRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Evaluation execution queued or retrieved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExecutionSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "409": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/monitors/{id}/timeseries": {
+      "parameters": [
+        {
+          "$ref": "#/components/parameters/OrganizationHeader"
+        },
+        {
+          "$ref": "#/components/parameters/MonitorId"
+        }
+      ],
+      "get": {
+        "operationId": "getMonitorTimeseries",
+        "parameters": [
+          {
+            "name": "window",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "1h",
+                "6h",
+                "24h"
+              ],
+              "default": "24h"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Monitor time-series data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonitorTimeSeriesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "probeBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "argp_<probeId>.<secret>; HMAC digest only in storage"
+      }
+    },
+    "parameters": {
+      "OrganizationHeader": {
+        "name": "X-Argus-Organization-Id",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      },
+      "MonitorId": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "responses": {
+      "Error": {
+        "description": "Structured error",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "timestamp"
+        ],
+        "properties": {
+          "status": {
+            "enum": [
+              "ok",
+              "unavailable"
+            ]
+          },
+          "service": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "HttpMonitorConfig": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "url",
+          "method",
+          "timeoutMs",
+          "expectedStatus",
+          "maxRedirects",
+          "maxResponseBytes"
+        ],
+        "properties": {
+          "kind": {
+            "const": "http"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https?://"
+          },
+          "method": {
+            "enum": [
+              "GET",
+              "HEAD",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE"
+            ]
+          },
+          "timeoutMs": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 30000
+          },
+          "expectedStatus": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          },
+          "maxRedirects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10
+          },
+          "maxResponseBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1048576
+          }
+        }
+      },
+      "Monitor": {
+        "type": "object",
+        "required": [
+          "id",
+          "organizationId",
+          "name",
+          "intervalSeconds",
+          "regions",
+          "healthState",
+          "version",
+          "config",
+          "createdAt",
+          "updatedAt",
+          "createdBy",
+          "updatedBy",
+          "incidentPolicy"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "intervalSeconds": {
+            "type": "integer",
+            "minimum": 60
+          },
+          "regions": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "healthState": {
+            "enum": [
+              "UNKNOWN",
+              "HEALTHY",
+              "DEGRADED",
+              "PENDING_DOWN",
+              "DOWN",
+              "PENDING_RECOVERY"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "config": {
+            "$ref": "#/components/schemas/HttpMonitorConfig"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "incidentPolicy": {
+            "$ref": "#/components/schemas/IncidentPolicy"
+          }
+        }
+      },
+      "CreateMonitorRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "intervalSeconds",
+          "regions",
+          "config"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "intervalSeconds": {
+            "type": "integer",
+            "minimum": 60
+          },
+          "regions": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "config": {
+            "$ref": "#/components/schemas/HttpMonitorConfig"
+          },
+          "incidentPolicy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "failureThreshold": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "recoveryThreshold": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              }
+            }
+          }
+        }
+      },
+      "UpdateMonitorRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "intervalSeconds",
+          "regions",
+          "config",
+          "version"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "intervalSeconds": {
+            "type": "integer",
+            "minimum": 60
+          },
+          "regions": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            }
+          },
+          "config": {
+            "$ref": "#/components/schemas/HttpMonitorConfig"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "incidentPolicy": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "failureThreshold": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "recoveryThreshold": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              }
+            }
+          }
+        }
+      },
+      "MonitorPage": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Monitor"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "BootstrapResponse": {
+        "type": "object",
+        "required": [
+          "user",
+          "organization"
+        ],
+        "properties": {
+          "user": {
+            "type": "object",
+            "required": [
+              "id",
+              "email"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              }
+            }
+          },
+          "organization": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "role"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "role": {
+                "enum": [
+                  "OWNER",
+                  "ADMIN",
+                  "RESPONDER",
+                  "VIEWER"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "traceId"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "details": {},
+          "traceId": {
+            "type": "string"
+          }
+        }
+      },
+      "ProbeJob": {
+        "title": "ProbeJob",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "executionId",
+          "organizationId",
+          "monitorId",
+          "monitorVersion",
+          "scheduledAt",
+          "deadlineAt",
+          "config"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "0.1"
+          },
+          "executionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deadlineAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "config": {
+            "$ref": "#/components/schemas/HttpMonitorConfig"
+          }
+        }
+      },
+      "ProbeResult": {
+        "title": "ProbeResult",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "schemaVersion",
+          "executionId",
+          "organizationId",
+          "monitorId",
+          "monitorVersion",
+          "probeId",
+          "region",
+          "startedAt",
+          "completedAt",
+          "durationMs",
+          "outcome"
+        ],
+        "properties": {
+          "schemaVersion": {
+            "const": "0.1"
+          },
+          "executionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "probeId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "region": {
+            "type": "string",
+            "minLength": 1
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "outcome": {
+            "enum": [
+              "PASS",
+              "FAIL"
+            ]
+          },
+          "errorCode": {
+            "enum": [
+              "DNS",
+              "CONNECT",
+              "TIMEOUT",
+              "TLS",
+              "ASSERTION",
+              "RESPONSE_TOO_LARGE",
+              "SSRF_BLOCKED",
+              "INTERNAL"
+            ]
+          },
+          "errorMessage": {
+            "type": "string"
+          },
+          "http": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "statusCode",
+              "responseBytes"
+            ],
+            "properties": {
+              "statusCode": {
+                "type": "integer",
+                "minimum": 100,
+                "maximum": 599
+              },
+              "responseBytes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "outcome": {
+                  "const": "FAIL"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "errorCode": true,
+                "errorMessage": true
+              },
+              "required": [
+                "errorCode",
+                "errorMessage"
+              ]
+            }
+          }
+        ]
+      },
+      "EventEnvelope": {
+        "title": "EventEnvelope",
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "version",
+          "occurredAt",
+          "organizationId",
+          "correlationId",
+          "payload"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "correlationId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "payload": true
+        }
+      },
+      "ExecutionSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "organizationId",
+          "monitorId",
+          "monitorVersion",
+          "kind",
+          "status",
+          "scheduledAt",
+          "deadlineAt",
+          "completedAt",
+          "observation"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "enum": [
+              "SCHEDULED",
+              "MANUAL",
+              "EVALUATION"
+            ]
+          },
+          "status": {
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "COMPLETED"
+            ]
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deadlineAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "observation": {
+            "enum": [
+              "QUORUM_PASS",
+              "QUORUM_FAILURE",
+              "SINGLE_REGION_FAILURE",
+              "INSUFFICIENT_RESULTS",
+              null
+            ]
+          }
+        }
+      },
+      "ExecutionTarget": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "region",
+          "status",
+          "attempts",
+          "result"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "region": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "QUEUED",
+              "LEASED",
+              "COMPLETED",
+              "EXPIRED",
+              "DEAD"
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProbeResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "ExecutionDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "organizationId",
+          "monitorId",
+          "monitorVersion",
+          "kind",
+          "status",
+          "scheduledAt",
+          "deadlineAt",
+          "completedAt",
+          "observation",
+          "targets"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "enum": [
+              "SCHEDULED",
+              "MANUAL",
+              "EVALUATION"
+            ]
+          },
+          "status": {
+            "enum": [
+              "QUEUED",
+              "RUNNING",
+              "COMPLETED"
+            ]
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "deadlineAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "observation": {
+            "enum": [
+              "QUORUM_PASS",
+              "QUORUM_FAILURE",
+              "SINGLE_REGION_FAILURE",
+              "INSUFFICIENT_RESULTS",
+              null
+            ]
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionTarget"
+            }
+          }
+        }
+      },
+      "ExecutionPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExecutionSummary"
+            }
+          }
+        }
+      },
+      "ProbeLease": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "leaseId",
+          "expiresAt",
+          "targetRegion",
+          "job"
+        ],
+        "properties": {
+          "leaseId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "targetRegion": {
+            "type": "string"
+          },
+          "job": {
+            "$ref": "#/components/schemas/ProbeJob"
+          }
+        }
+      },
+      "ResultReceipt": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "receiptId",
+          "receivedAt",
+          "duplicate"
+        ],
+        "properties": {
+          "receiptId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "duplicate": {
+            "type": "boolean"
+          }
+        }
+      },
+      "LeaseHeartbeat": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expiresAt"
+        ],
+        "properties": {
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Incident": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "organizationId",
+          "monitorId",
+          "status",
+          "openedAt",
+          "acknowledgedAt",
+          "acknowledgedBy",
+          "resolvedAt",
+          "resolvedBy"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "ACKNOWLEDGED",
+              "RESOLVED"
+            ]
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acknowledgedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "acknowledgedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "resolvedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "IncidentEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "executionId",
+          "type",
+          "occurredAt",
+          "actor"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "executionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "type": {
+            "enum": [
+              "OPENED",
+              "ACKNOWLEDGED",
+              "RESOLVED"
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "IncidentDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "organizationId",
+          "monitorId",
+          "status",
+          "openedAt",
+          "acknowledgedAt",
+          "acknowledgedBy",
+          "resolvedAt",
+          "resolvedBy",
+          "events",
+          "deliveries"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "ACKNOWLEDGED",
+              "RESOLVED"
+            ]
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acknowledgedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "acknowledgedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "resolvedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IncidentEvent"
+            }
+          },
+          "deliveries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationDelivery"
+            }
+          }
+        }
+      },
+      "IncidentPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Incident"
+            }
+          }
+        }
+      },
+      "RegionSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "region",
+          "executionId",
+          "executionSequence",
+          "outcome",
+          "latencyMs",
+          "completedAt",
+          "receivedAt",
+          "freshness",
+          "heartbeat"
+        ],
+        "properties": {
+          "region": {
+            "type": "string"
+          },
+          "executionId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "executionSequence": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[0-9]+$"
+          },
+          "outcome": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              null
+            ]
+          },
+          "latencyMs": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "completedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "receivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "freshness": {
+            "enum": [
+              "NO_DATA",
+              "FRESH",
+              "STALE"
+            ]
+          },
+          "heartbeat": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "lastSeenAt"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "ALIVE",
+                  "STALE",
+                  "UNKNOWN"
+                ]
+              },
+              "lastSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "MonitorSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "organizationId",
+          "monitorId",
+          "monitorVersion",
+          "healthState",
+          "observedAt",
+          "regions"
+        ],
+        "properties": {
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "healthState": {
+            "enum": [
+              "UNKNOWN",
+              "HEALTHY",
+              "DEGRADED",
+              "PENDING_DOWN",
+              "DOWN",
+              "PENDING_RECOVERY"
+            ]
+          },
+          "observedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RegionSnapshot"
+            }
+          }
+        },
+        "description": "Atomic tenant-scoped view. Latest accepted SCHEDULED result per region/current config, ordered by execution sequence, never arrival time. Fresh until scheduledAt + intervalSeconds + 150s. Heartbeat only for the latest probe assigned to this monitor/region; ALIVE within 60s, otherwise STALE; no seen probe is UNKNOWN. Re-fetch on SSE invalidation and every 15s for heartbeat ageing."
+      },
+      "NotificationChannel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "organizationId",
+          "type",
+          "name",
+          "config",
+          "enabled",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "enum": [
+              "SLACK",
+              "EMAIL"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "secretArn": {
+                "type": "string"
+              },
+              "recipient": {
+                "type": "string"
+              }
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "NotificationChannelPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationChannel"
+            }
+          }
+        }
+      },
+      "CreateNotificationChannelRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "name",
+          "config"
+        ],
+        "properties": {
+          "type": {
+            "enum": [
+              "SLACK",
+              "EMAIL"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "secretArn": {
+                "type": "string"
+              },
+              "recipient": {
+                "type": "string"
+              }
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateNotificationChannelRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": true,
+            "properties": {
+              "secretArn": {
+                "type": "string"
+              },
+              "recipient": {
+                "type": "string"
+              }
+            }
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        }
+      },
+      "EscalationStep": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "stepOrder",
+          "delaySeconds",
+          "channelIds"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "stepOrder": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "delaySeconds": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "channelIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid",
+            "deprecated": true
+          }
+        }
+      },
+      "EscalationPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "organizationId",
+          "name",
+          "steps"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EscalationStep"
+            }
+          }
+        }
+      },
+      "UpdateEscalationPolicyRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "steps"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "stepOrder",
+                "delaySeconds"
+              ],
+              "properties": {
+                "stepOrder": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "delaySeconds": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "channelIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "channelId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "deprecated": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotificationDelivery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "incidentId",
+          "channelId",
+          "eventKind",
+          "status",
+          "attempts",
+          "scheduledAt",
+          "nextAttemptAt",
+          "lastAttemptedAt",
+          "lastError"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "incidentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "escalationStepId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "channelId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "eventKind": {
+            "enum": [
+              "INCIDENT_OPENED",
+              "INCIDENT_RESOLVED"
+            ]
+          },
+          "status": {
+            "enum": [
+              "PENDING",
+              "SENDING",
+              "SENT",
+              "FAILED",
+              "CANCELED"
+            ]
+          },
+          "attempts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "scheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastAttemptedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "lastError": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "StatusPageComponent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "statusPageId",
+          "monitorId",
+          "publicName",
+          "position"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "statusPageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publicName": {
+            "type": "string"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "displayOrder": {
+            "type": "integer"
+          }
+        }
+      },
+      "StatusPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "organizationId",
+          "name",
+          "slug",
+          "published",
+          "version",
+          "createdAt",
+          "updatedAt",
+          "components"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatusPageComponent"
+            }
+          }
+        }
+      },
+      "StatusPageSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "published",
+          "version",
+          "componentCount"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "componentCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "StatusPageListPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatusPageSummary"
+            }
+          }
+        }
+      },
+      "CreateStatusPageRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "slug"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddStatusPageComponentRequest"
+            }
+          }
+        }
+      },
+      "UpdateStatusPageRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "version"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddStatusPageComponentRequest"
+            }
+          }
+        }
+      },
+      "AddStatusPageComponentRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "monitorId",
+          "publicName"
+        ],
+        "properties": {
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "publicName": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "type": "integer"
+          }
+        }
+      },
+      "PublicStatusUptimeWindow": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "percentage",
+          "coverage"
+        ],
+        "properties": {
+          "percentage": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "coverage": {
+            "type": "number"
+          }
+        }
+      },
+      "PublicStatusComponent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "status",
+          "uptime",
+          "coverage"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "OPERATIONAL",
+              "DEGRADED",
+              "MAJOR_OUTAGE",
+              "UNKNOWN"
+            ]
+          },
+          "uptime": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "last24Hours",
+              "last7Days",
+              "last30Days"
+            ],
+            "properties": {
+              "last24Hours": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "last7Days": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "last30Days": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            }
+          },
+          "coverage": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "last24Hours",
+              "last7Days",
+              "last30Days"
+            ],
+            "properties": {
+              "last24Hours": {
+                "type": "number"
+              },
+              "last7Days": {
+                "type": "number"
+              },
+              "last30Days": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "PublicIncidentUpdate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "type",
+          "occurredAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "enum": [
+              "OPENED",
+              "ACKNOWLEDGED",
+              "RESOLVED"
+            ]
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PublicIncident": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "componentName",
+          "status",
+          "openedAt",
+          "resolvedAt"
+        ],
+        "properties": {
+          "componentName": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "OPEN",
+              "ACKNOWLEDGED",
+              "RESOLVED"
+            ]
+          },
+          "openedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "PublicStatusPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "slug",
+          "overallStatus",
+          "updatedAt",
+          "components",
+          "incidents"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "overallStatus": {
+            "enum": [
+              "OPERATIONAL",
+              "DEGRADED",
+              "MAJOR_OUTAGE",
+              "UNKNOWN"
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "components": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicStatusComponent"
+            }
+          },
+          "incidents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicIncident"
+            }
+          }
+        }
+      },
+      "IncidentPolicy": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "failureThreshold",
+          "recoveryThreshold"
+        ],
+        "properties": {
+          "failureThreshold": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "recoveryThreshold": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          }
+        }
+      },
+      "EvaluateMonitorRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "monitorVersion"
+        ],
+        "properties": {
+          "monitorVersion": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      },
+      "TimeSeriesPoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "executionId",
+          "time",
+          "kind",
+          "outcome",
+          "latencyMs"
+        ],
+        "properties": {
+          "executionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "time": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "enum": [
+              "SCHEDULED",
+              "MANUAL",
+              "EVALUATION"
+            ]
+          },
+          "outcome": {
+            "enum": [
+              "PASS",
+              "FAIL",
+              null
+            ]
+          },
+          "latencyMs": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      },
+      "MonitorTimeSeriesResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "monitorId",
+          "from",
+          "to",
+          "truncated",
+          "series"
+        ],
+        "properties": {
+          "monitorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "from": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "to": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "series": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/TimeSeriesPoint"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

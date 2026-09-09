@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://argus.local/schemas/probe-job.schema.json",
+  "title": "ProbeJob",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "executionId", "organizationId", "monitorId", "monitorVersion", "scheduledAt", "deadlineAt", "config"],
+  "properties": {
+    "schemaVersion": { "enum": ["0.1", "0.2"] },
+    "executionId": { "type": "string", "format": "uuid" },
+    "organizationId": { "type": "string", "format": "uuid" },
+    "monitorId": { "type": "string", "format": "uuid" },
+    "monitorVersion": { "type": "integer", "minimum": 1 },
+    "scheduledAt": { "type": "string", "format": "date-time" },
+    "deadlineAt": { "type": "string", "format": "date-time" },
+    "config": {
+      "oneOf": [
+        { "$ref": "#/$defs/httpMonitorConfig" },
+        { "$ref": "#/$defs/tcpMonitorConfig" },
+        { "$ref": "#/$defs/sslMonitorConfig" },
+        { "$ref": "#/$defs/keywordMonitorConfig" }
+      ]
+    }
+  },
+  "$defs": {
+    "httpMonitorConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "url", "method", "timeoutMs", "expectedStatus", "maxRedirects", "maxResponseBytes"],
+      "properties": {
+        "kind": { "const": "http" },
+        "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+        "method": { "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"] },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "expectedStatus": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "maxRedirects": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "maxResponseBytes": { "type": "integer", "minimum": 1, "maximum": 1048576 }
+      }
+    },
+    "tcpMonitorConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "host", "port", "timeoutMs"],
+      "properties": {
+        "kind": { "const": "tcp" },
+        "host": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 }
+      }
+    },
+    "sslMonitorConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "host", "port", "timeoutMs", "warnBeforeDays"],
+      "properties": {
+        "kind": { "const": "ssl" },
+        "host": { "type": "string", "minLength": 1 },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+        "serverName": { "type": "string", "minLength": 1 },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 },
+        "warnBeforeDays": { "type": "integer", "minimum": 0, "maximum": 365 }
+      }
+    },
+    "keywordMonitorConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "url", "method", "expectedStatus", "keyword", "matchMode", "caseSensitive", "maxRedirects", "maxResponseBytes", "timeoutMs"],
+      "properties": {
+        "kind": { "const": "keyword" },
+        "url": { "type": "string", "format": "uri", "pattern": "^https?://" },
+        "method": { "enum": ["GET", "HEAD"] },
+        "expectedStatus": { "type": "integer", "minimum": 100, "maximum": 599 },
+        "keyword": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "matchMode": { "enum": ["CONTAINS", "NOT_CONTAINS"] },
+        "caseSensitive": { "type": "boolean" },
+        "maxRedirects": { "type": "integer", "minimum": 0, "maximum": 10 },
+        "maxResponseBytes": { "type": "integer", "minimum": 1, "maximum": 1048576 },
+        "timeoutMs": { "type": "integer", "minimum": 100, "maximum": 30000 }
+      }
+    }
+  }
+}

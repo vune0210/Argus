@@ -1,0 +1,75 @@
+name: Prepare regional probe release
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        type: choice
+        required: true
+        default: staging
+        options: [staging, production]
+permissions:
+  contents: read
+concurrency:
+  group: probe-release-${{ inputs.environment }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --platform linux/amd64 --provenance=false -f agents/probe/Dockerfile -t "argus-probe:${GITHUB_SHA}" .
+      - run: docker save "argus-probe:${GITHUB_SHA}" -o probe.tar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: probe-image
+          path: probe.tar
+          retention-days: 7
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        region: [ap-southeast-1, ap-northeast-1, eu-central-1]
+    env:
+      ARGUS_RELEASE_ENV: ${{ inputs.environment }}
+      ARGUS_PUBLISH_REGIONAL: "true"
+      AWS_REGION: ${{ matrix.region }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - uses: actions/download-artifact@v4
+        with: { name: probe-image }
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.ARGUS_PROBE_RELEASE_ROLE_ARN }}
+          aws-region: ${{ matrix.region }}
+      - run: docker load -i probe.tar
+      - run: node scripts/publish-regional-probe.mjs
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.region }}
+          path: release-*.json
+  verify:
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+      - run: node scripts/check-regional-release.mjs > probe-release.auto.tfvars.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-regional-release
+          path: |
+            release-*.json
+            probe-release.auto.tfvars.json

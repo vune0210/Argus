@@ -1,0 +1,44 @@
+{
+  "name": "Argus Service Status",
+  "slug": "argus-service",
+  "overallStatus": "OPERATIONAL",
+  "updatedAt": "2026-09-08T08:30:00Z",
+  "components": [
+    {
+      "name": "Public API",
+      "status": "OPERATIONAL",
+      "uptime": {
+        "last24Hours": 100.0,
+        "last7Days": 99.95,
+        "last30Days": null
+      },
+      "coverage": {
+        "last24Hours": 100.0,
+        "last7Days": 98.4,
+        "last30Days": 0.0
+      }
+    },
+    {
+      "name": "Database Cluster",
+      "status": "OPERATIONAL",
+      "uptime": {
+        "last24Hours": 100.0,
+        "last7Days": 100.0,
+        "last30Days": 99.99
+      },
+      "coverage": {
+        "last24Hours": 100.0,
+        "last7Days": 100.0,
+        "last30Days": 100.0
+      }
+    }
+  ],
+  "incidents": [
+    {
+      "componentName": "Public API",
+      "status": "RESOLVED",
+      "openedAt": "2026-09-07T14:10:00Z",
+      "resolvedAt": "2026-09-07T14:45:00Z"
+    }
+  ]
+}

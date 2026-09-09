@@ -1,0 +1,54 @@
+{
+  "name": "argus",
+  "version": "0.1.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vune0210/Argus.git"
+  },
+  "homepage": "https://github.com/vune0210/Argus#readme",
+  "bugs": {
+    "url": "https://github.com/vune0210/Argus/issues"
+  },
+  "packageManager": "pnpm@10.19.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @argus/domain build && dotenv -e .env -- pnpm --parallel --filter @argus/api --filter @argus/web dev",
+    "dev:worker": "pnpm --filter @argus/domain build && dotenv -e .env -- pnpm --filter @argus/api worker",
+    "test:migrations": "node scripts/migration-roundtrip.mjs",
+    "test:chaos": "node scripts/chaos-drill.mjs",
+    "test:target": "node --test tools/test-target/server.test.mjs",
+    "test:week3-smoke": "node scripts/week3-smoke.mjs",
+    "test:probe-recovery": "node scripts/week3-probe-recovery.mjs",
+    "test:week3-soak": "node scripts/week3-soak.mjs",
+    "test:release": "node --test scripts/check-regional-release.test.mjs",
+    "test:week4": "node scripts/test-week4.mjs",
+    "test:week4-demo": "node scripts/week4-demo-acceptance.mjs",
+    "test:week4-notifications": "node scripts/week4-notifications.mjs",
+    "test:week4-status": "node scripts/week4-status.mjs",
+    "test:week4-check-types": "node scripts/week4-check-types.mjs",
+    "dev:infra": "docker compose up -d postgres redis test-target",
+    "dev:down": "docker compose down",
+    "db:migrate": "dotenv -e .env -- pnpm --filter @argus/api db:migrate",
+    "contracts:generate": "node scripts/generate-contracts.mjs",
+    "contracts:check": "node scripts/check-contracts.mjs",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "build": "pnpm -r --if-present build",
+    "verify": "pnpm contracts:check && pnpm --filter @argus/domain build && pnpm lint && pnpm typecheck && pnpm test && pnpm test:target && pnpm test:release && pnpm build"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "dotenv-cli": "^8.0.0",
+    "wait-on": "^8.0.4"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": ">=8.5.18 <9"
+    }
+  }
+}

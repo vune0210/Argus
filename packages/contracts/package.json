@@ -1,0 +1,18 @@
+{
+  "name": "@argus/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "generate": "node ../../scripts/generate-contracts.mjs",
+    "check": "node ../../scripts/generate-contracts.mjs --check",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "test": "node ../../scripts/check-contracts.mjs",
+    "lint": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

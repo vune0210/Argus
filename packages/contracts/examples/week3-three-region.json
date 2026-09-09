@@ -1,0 +1,424 @@
+{
+  "organizations": [
+    {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "userId": "week3-owner-a",
+      "email": "week3-a@example.test"
+    },
+    {
+      "id": "22222222-2222-4222-8222-222222222223",
+      "userId": "week3-owner-b",
+      "email": "week3-b@example.test"
+    }
+  ],
+  "leases": [
+    {
+      "leaseId": "44444444-4444-4444-8444-444444444440",
+      "expiresAt": "2026-09-07T02:00:45.000Z",
+      "targetRegion": "ap-southeast-1",
+      "job": {
+        "schemaVersion": "0.1",
+        "executionId": "11111111-1111-4111-8111-111111111111",
+        "organizationId": "22222222-2222-4222-8222-222222222222",
+        "monitorId": "33333333-3333-4333-8333-333333333333",
+        "monitorVersion": 1,
+        "scheduledAt": "2026-09-07T02:00:00.000Z",
+        "deadlineAt": "2026-09-07T02:02:30.000Z",
+        "config": {
+          "kind": "http",
+          "url": "https://example.com",
+          "method": "GET",
+          "timeoutMs": 5000,
+          "expectedStatus": 200,
+          "maxRedirects": 5,
+          "maxResponseBytes": 1048576
+        }
+      }
+    },
+    {
+      "leaseId": "44444444-4444-4444-8444-444444444441",
+      "expiresAt": "2026-09-07T02:00:45.000Z",
+      "targetRegion": "ap-northeast-1",
+      "job": {
+        "schemaVersion": "0.1",
+        "executionId": "11111111-1111-4111-8111-111111111111",
+        "organizationId": "22222222-2222-4222-8222-222222222222",
+        "monitorId": "33333333-3333-4333-8333-333333333333",
+        "monitorVersion": 1,
+        "scheduledAt": "2026-09-07T02:00:00.000Z",
+        "deadlineAt": "2026-09-07T02:02:30.000Z",
+        "config": {
+          "kind": "http",
+          "url": "https://example.com",
+          "method": "GET",
+          "timeoutMs": 5000,
+          "expectedStatus": 200,
+          "maxRedirects": 5,
+          "maxResponseBytes": 1048576
+        }
+      }
+    },
+    {
+      "leaseId": "44444444-4444-4444-8444-444444444442",
+      "expiresAt": "2026-09-07T02:00:45.000Z",
+      "targetRegion": "eu-central-1",
+      "job": {
+        "schemaVersion": "0.1",
+        "executionId": "11111111-1111-4111-8111-111111111111",
+        "organizationId": "22222222-2222-4222-8222-222222222222",
+        "monitorId": "33333333-3333-4333-8333-333333333333",
+        "monitorVersion": 1,
+        "scheduledAt": "2026-09-07T02:00:00.000Z",
+        "deadlineAt": "2026-09-07T02:02:30.000Z",
+        "config": {
+          "kind": "http",
+          "url": "https://example.com",
+          "method": "GET",
+          "timeoutMs": 5000,
+          "expectedStatus": 200,
+          "maxRedirects": 5,
+          "maxResponseBytes": 1048576
+        }
+      }
+    }
+  ],
+  "results": [
+    {
+      "schemaVersion": "0.1",
+      "executionId": "11111111-1111-4111-8111-111111111111",
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "monitorId": "33333333-3333-4333-8333-333333333333",
+      "monitorVersion": 1,
+      "probeId": "fixture-ap-southeast-1",
+      "region": "ap-southeast-1",
+      "startedAt": "2026-09-07T02:00:00.000Z",
+      "completedAt": "2026-09-07T02:00:00.025Z",
+      "durationMs": 25,
+      "outcome": "PASS",
+      "http": {
+        "statusCode": 200,
+        "responseBytes": 12
+      }
+    },
+    {
+      "schemaVersion": "0.1",
+      "executionId": "11111111-1111-4111-8111-111111111111",
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "monitorId": "33333333-3333-4333-8333-333333333333",
+      "monitorVersion": 1,
+      "probeId": "fixture-ap-northeast-1",
+      "region": "ap-northeast-1",
+      "startedAt": "2026-09-07T02:00:00.000Z",
+      "completedAt": "2026-09-07T02:00:00.025Z",
+      "durationMs": 25,
+      "outcome": "PASS",
+      "http": {
+        "statusCode": 200,
+        "responseBytes": 12
+      }
+    },
+    {
+      "schemaVersion": "0.1",
+      "executionId": "11111111-1111-4111-8111-111111111111",
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "monitorId": "33333333-3333-4333-8333-333333333333",
+      "monitorVersion": 1,
+      "probeId": "fixture-eu-central-1",
+      "region": "eu-central-1",
+      "startedAt": "2026-09-07T02:00:00.000Z",
+      "completedAt": "2026-09-07T02:00:00.025Z",
+      "durationMs": 25,
+      "outcome": "PASS",
+      "http": {
+        "statusCode": 200,
+        "responseBytes": 12
+      }
+    }
+  ],
+  "receipt": {
+    "receiptId": "55555555-5555-4555-8555-555555555555",
+    "receivedAt": "2026-09-07T02:00:00.050Z",
+    "duplicate": false
+  },
+  "snapshots": {
+    "healthy": {
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "monitorId": "33333333-3333-4333-8333-333333333333",
+      "monitorVersion": 1,
+      "healthState": "HEALTHY",
+      "observedAt": "2026-09-07T02:00:30.000Z",
+      "regions": [
+        {
+          "region": "ap-southeast-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "FRESH",
+          "heartbeat": {
+            "status": "ALIVE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        },
+        {
+          "region": "ap-northeast-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "FRESH",
+          "heartbeat": {
+            "status": "ALIVE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        },
+        {
+          "region": "eu-central-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "FRESH",
+          "heartbeat": {
+            "status": "ALIVE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        }
+      ]
+    },
+    "empty": {
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "monitorId": "33333333-3333-4333-8333-333333333333",
+      "monitorVersion": 1,
+      "healthState": "UNKNOWN",
+      "observedAt": "2026-09-07T02:00:30.000Z",
+      "regions": [
+        {
+          "region": "ap-southeast-1",
+          "executionId": null,
+          "executionSequence": null,
+          "outcome": null,
+          "latencyMs": null,
+          "completedAt": null,
+          "receivedAt": null,
+          "freshness": "NO_DATA",
+          "heartbeat": {
+            "status": "UNKNOWN",
+            "lastSeenAt": null
+          }
+        },
+        {
+          "region": "ap-northeast-1",
+          "executionId": null,
+          "executionSequence": null,
+          "outcome": null,
+          "latencyMs": null,
+          "completedAt": null,
+          "receivedAt": null,
+          "freshness": "NO_DATA",
+          "heartbeat": {
+            "status": "UNKNOWN",
+            "lastSeenAt": null
+          }
+        },
+        {
+          "region": "eu-central-1",
+          "executionId": null,
+          "executionSequence": null,
+          "outcome": null,
+          "latencyMs": null,
+          "completedAt": null,
+          "receivedAt": null,
+          "freshness": "NO_DATA",
+          "heartbeat": {
+            "status": "UNKNOWN",
+            "lastSeenAt": null
+          }
+        }
+      ]
+    },
+    "failure": {
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "monitorId": "33333333-3333-4333-8333-333333333333",
+      "monitorVersion": 1,
+      "healthState": "DEGRADED",
+      "observedAt": "2026-09-07T02:00:30.000Z",
+      "regions": [
+        {
+          "region": "ap-southeast-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "FAIL",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "FRESH",
+          "heartbeat": {
+            "status": "ALIVE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        },
+        {
+          "region": "ap-northeast-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "FRESH",
+          "heartbeat": {
+            "status": "ALIVE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        },
+        {
+          "region": "eu-central-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "FRESH",
+          "heartbeat": {
+            "status": "ALIVE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        }
+      ]
+    },
+    "stale": {
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "monitorId": "33333333-3333-4333-8333-333333333333",
+      "monitorVersion": 1,
+      "healthState": "HEALTHY",
+      "observedAt": "2026-09-07T02:05:00.000Z",
+      "regions": [
+        {
+          "region": "ap-southeast-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "STALE",
+          "heartbeat": {
+            "status": "STALE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        },
+        {
+          "region": "ap-northeast-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "STALE",
+          "heartbeat": {
+            "status": "STALE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        },
+        {
+          "region": "eu-central-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "STALE",
+          "heartbeat": {
+            "status": "STALE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        }
+      ]
+    },
+    "missing": {
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "monitorId": "33333333-3333-4333-8333-333333333333",
+      "monitorVersion": 1,
+      "healthState": "DEGRADED",
+      "observedAt": "2026-09-07T02:00:30.000Z",
+      "regions": [
+        {
+          "region": "ap-southeast-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "FRESH",
+          "heartbeat": {
+            "status": "ALIVE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        },
+        {
+          "region": "ap-northeast-1",
+          "executionId": "11111111-1111-4111-8111-111111111111",
+          "executionSequence": "10",
+          "outcome": "PASS",
+          "latencyMs": 25,
+          "completedAt": "2026-09-07T02:00:00.025Z",
+          "receivedAt": "2026-09-07T02:00:00.050Z",
+          "freshness": "FRESH",
+          "heartbeat": {
+            "status": "ALIVE",
+            "lastSeenAt": "2026-09-07T02:00:20.000Z"
+          }
+        },
+        {
+          "region": "eu-central-1",
+          "executionId": null,
+          "executionSequence": null,
+          "outcome": null,
+          "latencyMs": null,
+          "completedAt": null,
+          "receivedAt": null,
+          "freshness": "NO_DATA",
+          "heartbeat": {
+            "status": "STALE",
+            "lastSeenAt": "2026-09-07T01:58:00.000Z"
+          }
+        }
+      ]
+    }
+  },
+  "events": [
+    {
+      "id": "66666666-6666-4666-8666-666666666666",
+      "type": "probe.result_received",
+      "version": 1,
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "occurredAt": "2026-09-07T02:00:00.050Z",
+      "correlationId": "11111111-1111-4111-8111-111111111111",
+      "payload": {
+        "executionId": "11111111-1111-4111-8111-111111111111",
+        "monitorId": "33333333-3333-4333-8333-333333333333",
+        "region": "ap-southeast-1"
+      }
+    },
+    {
+      "id": "66666666-6666-4666-8666-666666666667",
+      "type": "system.resync_required",
+      "version": 1,
+      "organizationId": "22222222-2222-4222-8222-222222222222",
+      "occurredAt": "2026-09-07T02:00:30.000Z",
+      "correlationId": "11111111-1111-4111-8111-111111111111",
+      "payload": {}
+    }
+  ]
+}

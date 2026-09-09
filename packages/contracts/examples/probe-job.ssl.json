@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "0.2",
+  "executionId": "9b12271a-200a-4a25-9781-a83a31c19b02",
+  "organizationId": "50dd02a1-5d07-4e08-98e3-05ecbc8eef1b",
+  "monitorId": "d32512f4-7502-4ec4-9cb3-cb0973e721ea",
+  "monitorVersion": 1,
+  "scheduledAt": "2026-09-08T08:00:00Z",
+  "deadlineAt": "2026-09-08T08:02:30Z",
+  "config": {
+    "kind": "ssl",
+    "host": "api.example.com",
+    "port": 443,
+    "serverName": "api.example.com",
+    "timeoutMs": 5000,
+    "warnBeforeDays": 30
+  }
+}

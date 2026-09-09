@@ -1,0 +1,126 @@
+{
+  "incidentStates": {
+    "open": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "organizationId": "50dd02a1-5d07-4e08-98e3-05ecbc8eef1b",
+      "monitorId": "c9a09156-f5fa-4cf7-9a09-775b11158567",
+      "status": "OPEN",
+      "openedAt": "2026-09-08T08:00:00Z",
+      "acknowledgedAt": null,
+      "acknowledgedBy": null,
+      "resolvedAt": null,
+      "resolvedBy": null
+    },
+    "acknowledged": {
+      "id": "22222222-2222-4222-8222-222222222222",
+      "organizationId": "50dd02a1-5d07-4e08-98e3-05ecbc8eef1b",
+      "monitorId": "d32512f4-7502-4ec4-9cb3-cb0973e721ea",
+      "status": "ACKNOWLEDGED",
+      "openedAt": "2026-09-08T08:00:00Z",
+      "acknowledgedAt": "2026-09-08T08:02:15Z",
+      "acknowledgedBy": "responder@example.com",
+      "resolvedAt": null,
+      "resolvedBy": null
+    },
+    "resolved": {
+      "id": "33333333-3333-4333-8333-333333333333",
+      "organizationId": "50dd02a1-5d07-4e08-98e3-05ecbc8eef1b",
+      "monitorId": "e5512bc8-b210-4f51-b0e5-79a0bfa1841e",
+      "status": "RESOLVED",
+      "openedAt": "2026-09-08T07:30:00Z",
+      "acknowledgedAt": "2026-09-08T07:35:00Z",
+      "acknowledgedBy": "responder@example.com",
+      "resolvedAt": "2026-09-08T07:55:00Z",
+      "resolvedBy": "responder@example.com"
+    }
+  },
+  "notificationChannels": [
+    {
+      "id": "44444444-4444-4444-8444-444444444444",
+      "organizationId": "50dd02a1-5d07-4e08-98e3-05ecbc8eef1b",
+      "type": "SLACK",
+      "name": "DevOps Slack Alert",
+      "config": {
+        "secretArn": "arn:aws:secretsmanager:ap-southeast-1:123456789012:secret:argus/slack-webhook-abc"
+      },
+      "enabled": true,
+      "createdAt": "2026-09-08T07:00:00Z",
+      "updatedAt": "2026-09-08T07:00:00Z"
+    },
+    {
+      "id": "55555555-5555-4555-8555-555555555555",
+      "organizationId": "50dd02a1-5d07-4e08-98e3-05ecbc8eef1b",
+      "type": "EMAIL",
+      "name": "Oncall Team Email",
+      "config": {
+        "recipient": "oncall@example.com"
+      },
+      "enabled": true,
+      "createdAt": "2026-09-08T07:00:00Z",
+      "updatedAt": "2026-09-08T07:00:00Z"
+    }
+  ],
+  "escalationPolicy": {
+    "id": "66666666-6666-4666-8666-666666666666",
+    "organizationId": "50dd02a1-5d07-4e08-98e3-05ecbc8eef1b",
+    "name": "Default Escalation Policy",
+    "steps": [
+      {
+        "id": "77777777-7777-4777-8777-777777777777",
+        "stepOrder": 0,
+        "delaySeconds": 0,
+        "channelIds": [
+          "44444444-4444-4444-8444-444444444444",
+          "55555555-5555-4555-8555-555555555555"
+        ],
+        "channelId": "44444444-4444-4444-8444-444444444444"
+      },
+      {
+        "id": "88888888-8888-4888-8888-888888888888",
+        "stepOrder": 1,
+        "delaySeconds": 300,
+        "channelIds": [
+          "55555555-5555-4555-8555-555555555555"
+        ],
+        "channelId": "55555555-5555-4555-8555-555555555555"
+      },
+      {
+        "id": "99999999-9999-4999-8999-999999999999",
+        "stepOrder": 2,
+        "delaySeconds": 600,
+        "channelIds": [
+          "44444444-4444-4444-8444-444444444444"
+        ],
+        "channelId": "44444444-4444-4444-8444-444444444444"
+      }
+    ]
+  },
+  "deliveries": [
+    {
+      "id": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      "incidentId": "11111111-1111-4111-8111-111111111111",
+      "escalationStepId": "77777777-7777-4777-8777-777777777777",
+      "channelId": "44444444-4444-4444-8444-444444444444",
+      "eventKind": "INCIDENT_OPENED",
+      "status": "SENT",
+      "attempts": 1,
+      "scheduledAt": "2026-09-08T08:00:00Z",
+      "nextAttemptAt": "2026-09-08T08:00:00Z",
+      "lastAttemptedAt": "2026-09-08T08:00:03Z",
+      "lastError": null
+    },
+    {
+      "id": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "incidentId": "11111111-1111-4111-8111-111111111111",
+      "escalationStepId": "88888888-8888-4888-8888-888888888888",
+      "channelId": "55555555-5555-4555-8555-555555555555",
+      "eventKind": "INCIDENT_OPENED",
+      "status": "CANCELED",
+      "attempts": 0,
+      "scheduledAt": "2026-09-08T08:05:00Z",
+      "nextAttemptAt": "2026-09-08T08:05:00Z",
+      "lastAttemptedAt": null,
+      "lastError": null
+    }
+  ]
+}

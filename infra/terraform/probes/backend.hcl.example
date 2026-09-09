@@ -1,0 +1,5 @@
+bucket       = "replace-with-existing-state-bucket"
+key          = "argus/staging/regional-probes.tfstate"
+region       = "ap-southeast-1"
+encrypt      = true
+use_lockfile = true

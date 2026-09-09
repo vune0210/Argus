@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "0.2",
+  "executionId": "8f3b1479-7a0e-4364-969c-29b3a0f7cda1",
+  "organizationId": "50dd02a1-5d07-4e08-98e3-05ecbc8eef1b",
+  "monitorId": "c9a09156-f5fa-4cf7-9a09-775b11158567",
+  "monitorVersion": 1,
+  "scheduledAt": "2026-09-08T08:00:00Z",
+  "deadlineAt": "2026-09-08T08:02:30Z",
+  "config": {
+    "kind": "tcp",
+    "host": "db.example.com",
+    "port": 5432,
+    "timeoutMs": 3000
+  }
+}

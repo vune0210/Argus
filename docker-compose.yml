@@ -1,0 +1,188 @@
+name: argus
+
+services:
+  migrate:
+    image: argus-api:local
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: &api-environment
+      NODE_ENV: development
+      AUTH_MODE: mock
+      DATABASE_URL: postgres://argus:argus@postgres:5432/argus
+      REDIS_URL: redis://redis:6379
+      SEED_DEV_PROBES: "true"
+      PROBE_TOKEN_HMAC_KEY: local-development-hmac-key-not-for-production
+      SCHEDULER_ENABLED: "true"
+      CORS_ORIGIN: http://localhost:3000
+      NOTIFICATION_MODE: mock
+      MOCK_NOTIFICATION_SINK_URL: http://notification-sink:4002
+    command: ["node", "apps/api/dist/database/migrate.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    image: argus-api:local
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: *api-environment
+    ports: ["4000:4000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  worker:
+    image: argus-api:local
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment: *api-environment
+    command: ["node", "apps/api/dist/worker.js"]
+    ports: ["4001:4001"]
+    depends_on:
+      api:
+        condition: service_healthy
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      target: development
+    environment:
+      NODE_ENV: development
+      AUTH_MODE: mock
+      NEXT_PUBLIC_AUTH_MODE: mock
+      ARGUS_API_URL: http://api:4000
+      HOSTNAME: 0.0.0.0
+    ports: ["3000:3000"]
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  probe-singapore: &running-probe
+    image: argus-probe:local
+    build:
+      context: .
+      dockerfile: agents/probe/Dockerfile
+    environment: &probe-environment
+      ARGUS_ENV: development
+      ARGUS_CONTROL_PLANE_URL: http://api:4000
+      ARGUS_PROBE_ID: dev-ap-southeast-1
+      ARGUS_REGION: ap-southeast-1
+      ARGUS_TOKEN: argp_dev-ap-southeast-1.local-development-secret
+      ARGUS_ALLOW_PRIVATE_TARGETS: "true"
+      ARGUS_CONCURRENCY: "4"
+    command: ["run"]
+    depends_on:
+      api:
+        condition: service_healthy
+    stop_grace_period: 160s
+    restart: unless-stopped
+
+  probe-tokyo:
+    <<: *running-probe
+    environment:
+      <<: *probe-environment
+      ARGUS_PROBE_ID: dev-ap-northeast-1
+      ARGUS_REGION: ap-northeast-1
+      ARGUS_TOKEN: argp_dev-ap-northeast-1.local-development-secret
+
+  probe-frankfurt:
+    <<: *running-probe
+    environment:
+      <<: *probe-environment
+      ARGUS_PROBE_ID: dev-eu-central-1
+      ARGUS_REGION: eu-central-1
+      ARGUS_TOKEN: argp_dev-eu-central-1.local-development-secret
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: argus
+      POSTGRES_USER: argus
+      POSTGRES_PASSWORD: argus
+    ports:
+      - "5432:5432"
+    volumes:
+      - argus-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U argus -d argus"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - argus-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  test-target:
+    build:
+      context: ./tools/test-target
+    environment:
+      PORT: 8080
+      ARGUS_TEST_CONTROL: "true"
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8080/healthy"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  notification-sink:
+    build:
+      context: ./tools/mock-notification-sink
+    environment:
+      PORT: 4002
+    ports:
+      - "4002:4002"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:4002/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  probe:
+    profiles: ["tools"]
+    build:
+      context: .
+      dockerfile: agents/probe/Dockerfile
+    environment:
+      ARGUS_ENV: development
+      ARGUS_PROBE_ID: local-probe
+      ARGUS_REGION: local
+      ARGUS_ALLOW_PRIVATE_TARGETS: "true"
+    volumes:
+      - ./packages/contracts/examples:/contracts:ro
+    depends_on:
+      test-target:
+        condition: service_healthy
+    command: ["execute-file", "/contracts/probe-job.docker.json"]
+
+volumes:
+  argus-postgres:
+  argus-redis:
