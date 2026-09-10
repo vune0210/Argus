@@ -418,10 +418,10 @@ export class NotificationsService {
 
         for (const chId of step.channelIds) {
           await client.query(
-            `INSERT INTO escalation_step_channels(step_id, channel_id)
-             VALUES ($1, $2)
+            `INSERT INTO escalation_step_channels(organization_id, step_id, channel_id)
+             VALUES ($1, $2, $3)
              ON CONFLICT (step_id, channel_id) DO NOTHING`,
-            [s.id, chId],
+            [organizationId, s.id, chId],
           );
         }
 

@@ -42,8 +42,13 @@ integration("monitor tenant integration", () => {
   });
 
   afterAll(async () => {
-    if (organizationId) await pool.query("DELETE FROM organizations WHERE id = $1", [organizationId]);
-    await pool.query("DELETE FROM users WHERE id = ANY($1::text[])", [[ownerId, outsiderId, viewerId]]);
+    if (organizationId) {
+      for (let i = 0; i < 5; i++) {
+        try { await pool.query("DELETE FROM organizations WHERE id = $1", [organizationId]); break; }
+        catch { await new Promise((r) => setTimeout(r, 200)); }
+      }
+    }
+    await pool.query("DELETE FROM users WHERE id = ANY($1::text[])", [[ownerId, outsiderId, viewerId]]).catch(() => undefined);
     await pool.end();
   });
 

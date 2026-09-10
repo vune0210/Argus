@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { readEnvironment } from "../config/environment";
+import { resolveDatabaseUrl } from "../database/database-url";
 import { digestToken, probeKey } from "./probe-auth";
 
 async function main() {
@@ -11,7 +11,8 @@ async function main() {
     || !token.startsWith(`argp_${id}.`) || !/^[a-zA-Z0-9_-]{16,256}$/.test(token.slice(`argp_${id}.`.length))) throw new Error("Invalid probe registration parameters");
   if (!local && (id.startsWith("dev-") || token.endsWith(".local-development-secret"))) throw new Error("Development credentials are forbidden");
   const digest = digestToken(token,probeKey());
-  const pool = new Pool({ connectionString: readEnvironment().databaseUrl });
+  const connectionString = await resolveDatabaseUrl();
+  const pool = new Pool({ connectionString });
   try {
     await pool.query(`INSERT INTO probe_agents(id,region,token_digest,is_development) VALUES($1,$2,$3,$4)
       ON CONFLICT(id) DO UPDATE SET token_digest=EXCLUDED.token_digest,status='ACTIVE'

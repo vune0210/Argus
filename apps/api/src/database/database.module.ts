@@ -1,6 +1,6 @@
 import { Global, Inject, Module, OnApplicationShutdown } from "@nestjs/common";
 import { Pool } from "pg";
-import { readEnvironment } from "../config/environment";
+import { resolveDatabaseUrl } from "./database-url";
 
 export const DATABASE_POOL = Symbol("DATABASE_POOL");
 
@@ -9,8 +9,9 @@ export const DATABASE_POOL = Symbol("DATABASE_POOL");
   providers: [
     {
       provide: DATABASE_POOL,
-      useFactory: () => {
-        const pool = new Pool({ connectionString: readEnvironment().databaseUrl, max: 10 });
+      useFactory: async () => {
+        const connectionString = await resolveDatabaseUrl();
+        const pool = new Pool({ connectionString, max: 10 });
         pool.on("error", (error) => {
           console.error(JSON.stringify({ level: "error", service: "argus-api", event: "postgres_pool_error", error: error.message }));
         });

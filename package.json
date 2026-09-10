@@ -36,7 +36,7 @@
     "contracts:check": "node scripts/check-contracts.mjs",
     "lint": "pnpm -r --if-present lint",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "dotenv -e .env -- pnpm -r --if-present test",
     "build": "pnpm -r --if-present build",
     "verify": "pnpm contracts:check && pnpm --filter @argus/domain build && pnpm lint && pnpm typecheck && pnpm test && pnpm test:target && pnpm test:release && pnpm build"
   },

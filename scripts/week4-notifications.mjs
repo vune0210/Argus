@@ -130,6 +130,13 @@ async function main() {
       enabled: true,
     });
 
+    const primaryEmailChannel = await notifService.createChannel(orgA, userA, {
+      name: "Primary Email",
+      type: "EMAIL",
+      email: "ops-primary@example.com",
+      enabled: true,
+    });
+
     const emailChannel = await notifService.createChannel(orgA, userA, {
       name: "Secondary Email",
       type: "EMAIL",
@@ -148,9 +155,9 @@ async function main() {
     await notifService.updateEscalationPolicy(orgA, userA, {
       name: "Default Escalation",
       steps: [
-        { name: "PRIMARY", stepOrder: 0, delaySeconds: 0, channelId: slackChannel.id },
-        { name: "SECONDARY", stepOrder: 1, delaySeconds: 300, channelId: emailChannel.id },
-        { name: "TEAM", stepOrder: 2, delaySeconds: 600, channelId: teamChannel.id },
+        { name: "PRIMARY", stepOrder: 0, delaySeconds: 0, channelIds: [slackChannel.id, primaryEmailChannel.id] },
+        { name: "SECONDARY", stepOrder: 1, delaySeconds: 300, channelIds: [emailChannel.id] },
+        { name: "TEAM", stepOrder: 2, delaySeconds: 600, channelIds: [teamChannel.id] },
       ],
     });
 
@@ -167,7 +174,7 @@ async function main() {
     const monitorId = await createTestMonitor("API Gateway S1");
 
     // -------------------------------------------------------------
-    // Scenario 1: Incident Open creates exactly 3 deliveries
+    // Scenario 1: Incident Open creates multichannel deliveries (2 Primary, 1 Secondary, 1 Team)
     // -------------------------------------------------------------
     const openTime = new Date(Date.now() - 5000);
     const incRes = await pool.query(
@@ -192,20 +199,21 @@ async function main() {
        FROM notification_deliveries d
        JOIN escalation_policy_steps s ON s.id = d.escalation_step_id
        WHERE d.incident_id = $1
-       ORDER BY s.step_order ASC`,
+       ORDER BY s.step_order ASC, d.id ASC`,
       [scenario1IncidentId],
     );
 
-    const s1Pass = deliveriesRes.rowCount === 3 &&
+    const s1Pass = deliveriesRes.rowCount === 4 &&
       deliveriesRes.rows[0].status === "PENDING" &&
       deliveriesRes.rows[0].delay_seconds === 0 &&
-      deliveriesRes.rows[1].delay_seconds === 300 &&
-      deliveriesRes.rows[2].delay_seconds === 600;
+      deliveriesRes.rows[1].delay_seconds === 0 &&
+      deliveriesRes.rows[2].delay_seconds === 300 &&
+      deliveriesRes.rows[3].delay_seconds === 600;
 
     recordTest(
-      "Scenario 1: Incident open creates exactly 3 escalation deliveries",
+      "Scenario 1: Incident open creates multichannel escalation deliveries",
       s1Pass,
-      `Deliveries count: ${deliveriesRes.rowCount}, delays: [0s, 300s, 600s]`,
+      `Deliveries count: ${deliveriesRes.rowCount}, delays: [0s, 0s, 300s, 600s]`,
     );
 
     // -------------------------------------------------------------
@@ -214,12 +222,14 @@ async function main() {
     const startPrimary = Date.now();
     await clearSinkDeliveries();
 
-    // Process primary delivery with worker
-    const processedCount = await worker.process();
+    // Process primary deliveries with worker (both Slack and Email)
+    const processed1 = await worker.process();
+    const processed2 = await worker.process();
+    const processedCount = processed1 + processed2;
     const sinkDeliveries = await getSinkDeliveries();
 
     primaryLatencyMs = Date.now() - startPrimary;
-    const primaryReceived = sinkDeliveries.find((d) => d.deliveryId === deliveriesRes.rows[0].id);
+    const primaryReceived = sinkDeliveries.find((d) => d.deliveryId === deliveriesRes.rows[0].id || d.deliveryId === deliveriesRes.rows[1].id);
 
     const s2Pass = processedCount >= 1 &&
       primaryReceived !== undefined &&
@@ -249,12 +259,15 @@ async function main() {
       [scenario1IncidentId],
     );
 
-    const s3Pass = replayRes.rows[0].count === 3;
+    const s3Pass = replayRes.rows[0].count === 4;
     recordTest(
       "Scenario 3: Replay incident event does not duplicate deliveries",
       s3Pass,
       `Total deliveries count remains: ${replayRes.rows[0].count}`,
     );
+
+    // Clean up remaining future deliveries of scenario 1 so queue is clean
+    await pool.query("UPDATE notification_deliveries SET status = 'CANCELED' WHERE incident_id = $1 AND status = 'PENDING'", [scenario1IncidentId]);
 
     // -------------------------------------------------------------
     // Scenario 4: 429 retries according to Retry-After
@@ -302,6 +315,9 @@ async function main() {
       `Attempts: ${delivery429?.attempts}, Last error: ${delivery429?.last_error}, Scheduled in: ~${delivery429?.seconds_until_next}s`,
     );
 
+    // Clean up deliveries for S4
+    await pool.query("UPDATE notification_deliveries SET status = 'CANCELED' WHERE incident_id = $1", [inc429Id]);
+
     // Reset sink to success
     await setSinkControl("success");
 
@@ -327,11 +343,16 @@ async function main() {
       }
     });
 
-    // Fast-forward attempts to 4 to verify 5th attempt fails permanently
+    // Pick 1 delivery and cancel others so worker only processes this one
     const primary5xx = (await pool.query(
       `SELECT id FROM notification_deliveries WHERE incident_id = $1 ORDER BY scheduled_at ASC LIMIT 1`,
       [inc5xxId],
     )).rows[0];
+
+    await pool.query(
+      `UPDATE notification_deliveries SET status = 'CANCELED' WHERE incident_id = $1 AND id != $2`,
+      [inc5xxId, primary5xx.id],
+    );
 
     await pool.query(
       `UPDATE notification_deliveries
@@ -357,6 +378,9 @@ async function main() {
       s5Pass,
       `Status: ${failedDelivery.status}, Attempts: ${failedDelivery.attempts}, Error: ${failedDelivery.last_error}`,
     );
+
+    // Clean up deliveries for S5
+    await pool.query("UPDATE notification_deliveries SET status = 'CANCELED' WHERE incident_id = $1", [inc5xxId]);
 
     await setSinkControl("success");
 
@@ -436,8 +460,11 @@ async function main() {
       `Deliveries statuses: [${ackDeliveries.map((d) => d.status).join(", ")}]`,
     );
 
+    // Clean up S7
+    await pool.query("UPDATE notification_deliveries SET status = 'CANCELED' WHERE incident_id = $1", [incAckId]);
+
     // -------------------------------------------------------------
-    // Scenario 8: Resolve before minute 5 also cancels Secondary and Team
+    // Scenario 8: Resolve before minute 5 cancels alert deliveries and creates Slack + Email recovery
     // -------------------------------------------------------------
     const monitorResolveId = await createTestMonitor("API Gateway S8");
     const openResolveTime = new Date(Date.now() - 5000);
@@ -459,21 +486,46 @@ async function main() {
     // Resolve incident
     await pipeline.resolveIncident(orgA, userA, incResolveId);
 
-    const resolveDeliveries = (await pool.query(
+    const alertDeliveries = (await pool.query(
       `SELECT d.status, s.name as step_name
        FROM notification_deliveries d
        JOIN escalation_policy_steps s ON s.id = d.escalation_step_id
-       WHERE d.incident_id = $1
+       WHERE d.incident_id = $1 AND d.event_kind = 'INCIDENT_OPENED'
        ORDER BY s.step_order ASC`,
       [incResolveId],
     )).rows;
 
-    const s8Pass = resolveDeliveries.every((d) => d.status === "CANCELED");
+    const recoveryDeliveries = (await pool.query(
+      `SELECT d.status, d.channel_id, c.type as channel_type
+       FROM notification_deliveries d
+       JOIN notification_channels c ON c.id = d.channel_id
+       WHERE d.incident_id = $1 AND d.event_kind = 'INCIDENT_RESOLVED'`,
+      [incResolveId],
+    )).rows;
+
+    // Test replay: resolve again should not create duplicate recovery deliveries
+    await pipeline.resolveIncident(orgA, userA, incResolveId);
+    const replayRecoveryCount = (await pool.query(
+      `SELECT count(*)::int as count FROM notification_deliveries WHERE incident_id = $1 AND event_kind = 'INCIDENT_RESOLVED'`,
+      [incResolveId],
+    )).rows[0].count;
+
+    const s8Pass =
+      alertDeliveries.length === 4 &&
+      alertDeliveries.every((d) => d.status === "CANCELED") &&
+      recoveryDeliveries.length === 2 &&
+      recoveryDeliveries.some((d) => d.channel_type === "SLACK") &&
+      recoveryDeliveries.some((d) => d.channel_type === "EMAIL") &&
+      replayRecoveryCount === 2;
+
     recordTest(
-      "Scenario 8: Manual resolve before minute 5 cancels pending deliveries",
+      "Scenario 8: Manual resolve cancels pending alert deliveries and creates 1 Slack + 1 Email recovery (with replay dedup)",
       s8Pass,
-      `Deliveries statuses: [${resolveDeliveries.map((d) => d.status).join(", ")}]`,
+      `Alerts canceled: ${alertDeliveries.length}, Recovery created: ${recoveryDeliveries.length} (Replay dedup: ${replayRecoveryCount === 2})`,
     );
+
+    // Clean up S8
+    await pool.query("UPDATE notification_deliveries SET status = 'CANCELED' WHERE incident_id = $1", [incResolveId]);
 
     // -------------------------------------------------------------
     // Scenario 9: Cross-tenant isolation (Tenant B cannot read/modify Tenant A's channels or policy)

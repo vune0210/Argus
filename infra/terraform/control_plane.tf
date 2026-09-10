@@ -13,9 +13,52 @@ variable "route53_zone_id" {
 }
 
 variable "acm_certificate_arn" {
-  description = "Existing or verified ACM certificate ARN covering *.staging.<domain> and staging.<domain>"
+  description = "Legacy or fallback ACM certificate ARN"
   type        = string
   default     = ""
+}
+
+variable "alb_certificate_arn" {
+  description = "Singapore (ap-southeast-1) ACM certificate ARN covering *.staging.<domain> and staging.<domain>"
+  type        = string
+  default     = ""
+}
+
+variable "cloudfront_certificate_arn" {
+  description = "Global us-east-1 ACM certificate ARN for CloudFront status page distribution"
+  type        = string
+  default     = ""
+}
+
+variable "status_origin_secret" {
+  description = "Shared secret header between CloudFront and ALB for status page origin verification"
+  type        = string
+  default     = "argus-status-origin-staging-secret-value"
+  sensitive   = true
+}
+
+variable "ses_identity_arn" {
+  description = "ARN of the verified SES email or domain identity for alerting"
+  type        = string
+  default     = ""
+}
+
+variable "ses_sender_email" {
+  description = "Configured sender email address for incident alerts"
+  type        = string
+  default     = "alerts@staging.argus.monitoring"
+}
+
+variable "slack_secret_arns" {
+  description = "List of Secrets Manager ARNs containing Slack webhook credentials"
+  type        = list(string)
+  default     = []
+}
+
+variable "worker_scheduler_enabled" {
+  description = "Whether the scheduler loop is enabled in worker"
+  type        = string
+  default     = "true"
 }
 
 variable "enable_control_plane_services" {
@@ -51,6 +94,14 @@ variable "worker_image_digest" {
   type        = string
   default     = ""
 }
+
+locals {
+  alb_cert_arn   = var.alb_certificate_arn != "" ? var.alb_certificate_arn : var.acm_certificate_arn
+  cf_cert_arn    = var.cloudfront_certificate_arn != "" ? var.cloudfront_certificate_arn : var.acm_certificate_arn
+  status_secret  = var.status_origin_secret
+  has_digests    = var.api_image_digest != "" && var.web_image_digest != "" && var.worker_image_digest != ""
+}
+
 
 # -----------------------------------------------------------------------------
 # 1. VPC Subnets & NAT Gateway
@@ -129,6 +180,15 @@ resource "aws_security_group" "postgres" {
   }
 
   tags = { Name = "${local.name}-postgres" }
+}
+
+resource "aws_vpc_security_group_egress_rule" "postgres" {
+  security_group_id            = aws_security_group.control_plane.id
+  referenced_security_group_id = aws_security_group.postgres.id
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  tags                         = { Name = "${local.name}-egress-postgres" }
 }
 
 resource "aws_db_instance" "postgres" {
@@ -268,12 +328,12 @@ resource "aws_lb_listener" "http" {
 }
 
 resource "aws_lb_listener" "https" {
-  count             = var.acm_certificate_arn != "" ? 1 : 0
+  count             = local.alb_cert_arn != "" ? 1 : 0
   load_balancer_arn = aws_lb.control_plane.arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-  certificate_arn   = var.acm_certificate_arn
+  certificate_arn   = local.alb_cert_arn
 
   default_action {
     type             = "forward"
@@ -284,7 +344,7 @@ resource "aws_lb_listener" "https" {
 # Host-based routing rules:
 # 1. api.staging.<domain> -> API Target Group
 resource "aws_lb_listener_rule" "api_host" {
-  count        = var.acm_certificate_arn != "" ? 1 : 0
+  count        = local.alb_cert_arn != "" ? 1 : 0
   listener_arn = aws_lb_listener.https[0].arn
   priority     = 10
 
@@ -302,7 +362,7 @@ resource "aws_lb_listener_rule" "api_host" {
 
 # 2. app.staging.<domain> -> Web Target Group (Note: Next.js handles /api/auth, /api/backend, /api/public)
 resource "aws_lb_listener_rule" "app_host" {
-  count        = var.acm_certificate_arn != "" ? 1 : 0
+  count        = local.alb_cert_arn != "" ? 1 : 0
   listener_arn = aws_lb_listener.https[0].arn
   priority     = 20
 
@@ -318,9 +378,9 @@ resource "aws_lb_listener_rule" "app_host" {
   }
 }
 
-# 3. status.staging.<domain> -> Web Target Group (served via CloudFront)
-resource "aws_lb_listener_rule" "status_host" {
-  count        = var.acm_certificate_arn != "" ? 1 : 0
+# 3. Status page origin -> Web Target Group (routed via CloudFront secret header, not dependent on viewer Host)
+resource "aws_lb_listener_rule" "status_origin" {
+  count        = local.alb_cert_arn != "" ? 1 : 0
   listener_arn = aws_lb_listener.https[0].arn
   priority     = 30
 
@@ -330,8 +390,9 @@ resource "aws_lb_listener_rule" "status_host" {
   }
 
   condition {
-    host_header {
-      values = ["status.${var.domain_name}"]
+    http_header {
+      http_header_name = "X-Argus-Status-Secret"
+      values           = [local.status_secret]
     }
   }
 }
@@ -344,22 +405,27 @@ resource "aws_cloudfront_distribution" "status_page" {
   enabled             = true
   is_ipv6_enabled     = true
   price_class         = "PriceClass_100"
-  aliases             = var.acm_certificate_arn != "" ? ["status.${var.domain_name}"] : []
+  aliases             = local.cf_cert_arn != "" ? ["status.${var.domain_name}"] : []
 
   origin {
-    domain_name = aws_lb.control_plane.dns_name
+    domain_name = var.route53_zone_id != "" ? "status-origin.${var.domain_name}" : aws_lb.control_plane.dns_name
     origin_id   = "alb-status-page"
 
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = var.acm_certificate_arn != "" ? "https-only" : "http-only"
+      origin_protocol_policy = local.alb_cert_arn != "" ? "https-only" : "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
 
     custom_header {
       name  = "X-Argus-Status-Host"
       value = "status.${var.domain_name}"
+    }
+
+    custom_header {
+      name  = "X-Argus-Status-Secret"
+      value = local.status_secret
     }
   }
 
@@ -370,7 +436,7 @@ resource "aws_cloudfront_distribution" "status_page" {
 
     forwarded_values {
       query_string = true
-      headers      = ["Host", "X-Argus-Status-Host"]
+      headers      = ["X-Argus-Status-Host", "X-Argus-Status-Secret"]
 
       cookies {
         forward = "none"
@@ -391,10 +457,10 @@ resource "aws_cloudfront_distribution" "status_page" {
   }
 
   viewer_certificate {
-    acm_certificate_arn            = var.acm_certificate_arn != "" ? var.acm_certificate_arn : null
-    cloudfront_default_certificate = var.acm_certificate_arn == "" ? true : false
-    ssl_support_method             = var.acm_certificate_arn != "" ? "sni-only" : null
-    minimum_protocol_version       = var.acm_certificate_arn != "" ? "TLSv1.2_2021" : null
+    acm_certificate_arn            = local.cf_cert_arn != "" ? local.cf_cert_arn : null
+    cloudfront_default_certificate = local.cf_cert_arn == "" ? true : false
+    ssl_support_method             = local.cf_cert_arn != "" ? "sni-only" : null
+    minimum_protocol_version       = local.cf_cert_arn != "" ? "TLSv1.2_2021" : null
   }
 
   tags = { Name = "${local.name}-status-cdn" }
@@ -442,6 +508,19 @@ resource "aws_route53_record" "status" {
   }
 }
 
+resource "aws_route53_record" "status_origin" {
+  count   = var.route53_zone_id != "" ? 1 : 0
+  zone_id = var.route53_zone_id
+  name    = "status-origin.${var.domain_name}"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.control_plane.dns_name
+    zone_id                = aws_lb.control_plane.zone_id
+    evaluate_target_health = true
+  }
+}
+
 # -----------------------------------------------------------------------------
 # 6. ECS Cluster & Fargate Services (API, Web, Worker)
 # -----------------------------------------------------------------------------
@@ -465,25 +544,33 @@ resource "aws_iam_role" "app_task_role" {
   })
 }
 
-# API/Worker minimal notification & secret access
+# API/Worker minimal notification & secret access (no wildcards)
 resource "aws_iam_role_policy" "app_minimal_permissions" {
   name = "${local.name}-minimal-permissions"
   role = aws_iam_role.app_task_role.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ses:SendEmail"]
-        Resource = "*"
-      },
-      {
-        Effect   = "Allow"
-        Action   = ["secretsmanager:GetSecretValue"]
-        Resource = "*"
-      }
-    ]
+    Statement = concat(
+      [
+        {
+          Effect   = "Allow"
+          Action   = ["secretsmanager:GetSecretValue"]
+          Resource = distinct(compact(concat(
+            [aws_db_instance.postgres.master_user_secret[0].secret_arn],
+            values(var.worker_secret_arns),
+            var.slack_secret_arns
+          )))
+        }
+      ],
+      var.ses_identity_arn != "" ? [
+        {
+          Effect   = "Allow"
+          Action   = ["ses:SendEmail"]
+          Resource = [var.ses_identity_arn]
+        }
+      ] : []
+    )
   })
 }
 
@@ -523,7 +610,10 @@ resource "aws_ecs_task_definition" "api" {
       { name = "PORT", value = "4000" },
       { name = "AUTH_MODE", value = "cognito" },
       { name = "COGNITO_USER_POOL_ID", value = aws_cognito_user_pool.argus.id },
-      { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.web.id }
+      { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.web.id },
+      { name = "CORS_ORIGIN", value = "https://app.${var.domain_name}" },
+      { name = "AWS_REGION", value = var.aws_region },
+      { name = "DATABASE_SECRET_ARN", value = aws_db_instance.postgres.master_user_secret[0].secret_arn }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -553,9 +643,20 @@ resource "aws_ecs_task_definition" "web" {
     readonlyRootFilesystem = true
     stopTimeout = 30
     environment = [
-      { name = "NODE_ENV", value = var.environment },
+      { name = "NODE_ENV", value = "production" },
       { name = "PORT", value = "3000" },
-      { name = "NEXTAUTH_URL", value = "https://app.${var.domain_name}" }
+      { name = "AUTH_MODE", value = "cognito" },
+      { name = "NEXT_PUBLIC_AUTH_MODE", value = "cognito" },
+      { name = "ARGUS_API_URL", value = "https://api.${var.domain_name}" },
+      { name = "NEXTAUTH_URL", value = "https://app.${var.domain_name}" },
+      { name = "COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.web.id },
+      { name = "NEXT_PUBLIC_COGNITO_CLIENT_ID", value = aws_cognito_user_pool_client.web.id },
+      { name = "COGNITO_REDIRECT_URI", value = "https://app.${var.domain_name}/api/auth/callback" },
+      { name = "NEXT_PUBLIC_COGNITO_REDIRECT_URI", value = "https://app.${var.domain_name}/api/auth/callback" },
+      { name = "COGNITO_LOGOUT_URI", value = "https://app.${var.domain_name}/login" },
+      { name = "NEXT_PUBLIC_COGNITO_LOGOUT_URI", value = "https://app.${var.domain_name}/login" },
+      { name = "COGNITO_DOMAIN", value = var.cognito_domain_prefix != "" ? "https://${var.cognito_domain_prefix}.auth.${var.aws_region}.amazoncognito.com" : "" },
+      { name = "NEXT_PUBLIC_COGNITO_DOMAIN", value = var.cognito_domain_prefix != "" ? "https://${var.cognito_domain_prefix}.auth.${var.aws_region}.amazoncognito.com" : "" }
     ]
     logConfiguration = {
       logDriver = "awslogs"
@@ -568,12 +669,44 @@ resource "aws_ecs_task_definition" "web" {
   }])
 }
 
-# ECS Fargate Services
+# ECS One-off Migration Task Definition (uses same API image digest and secrets as API)
+resource "aws_ecs_task_definition" "migration" {
+  family                   = "${local.name}-migration"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 512
+  memory                   = 1024
+  execution_role_arn       = aws_iam_role.app_task_execution_role.arn
+  task_role_arn            = aws_iam_role.app_task_role.arn
+
+  container_definitions = jsonencode([{
+    name      = "migration"
+    image     = var.api_image_digest != "" ? "${aws_ecr_repository.service["api"].repository_url}@${var.api_image_digest}" : "${aws_ecr_repository.service["api"].repository_url}:${var.execution_image_tag}"
+    essential = true
+    command   = ["node", "apps/api/dist/database/migrate.js"]
+    readonlyRootFilesystem = true
+    environment = [
+      { name = "NODE_ENV", value = var.environment },
+      { name = "DATABASE_SECRET_ARN", value = aws_db_instance.postgres.master_user_secret[0].secret_arn },
+      { name = "AWS_REGION", value = var.aws_region }
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.service["api"].name
+        awslogs-region        = var.aws_region
+        awslogs-stream-prefix = "migration"
+      }
+    }
+  }])
+}
+
+# ECS Fargate Services with digest gating
 resource "aws_ecs_service" "api" {
   name            = "${local.name}-api"
   cluster         = aws_ecs_cluster.control_plane.id
   task_definition = aws_ecs_task_definition.api.arn
-  desired_count   = var.enable_control_plane_services ? var.api_desired_count : 0
+  desired_count   = (var.enable_control_plane_services && local.has_digests) ? var.api_desired_count : 0
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -587,13 +720,20 @@ resource "aws_ecs_service" "api" {
     container_name   = "api"
     container_port   = 4000
   }
+
+  lifecycle {
+    precondition {
+      condition     = !var.enable_control_plane_services || local.has_digests
+      error_message = "Cannot enable control plane services without immutable image digests for API, Web, and Worker."
+    }
+  }
 }
 
 resource "aws_ecs_service" "web" {
   name            = "${local.name}-web"
   cluster         = aws_ecs_cluster.control_plane.id
   task_definition = aws_ecs_task_definition.web.arn
-  desired_count   = var.enable_control_plane_services ? var.web_desired_count : 0
+  desired_count   = (var.enable_control_plane_services && local.has_digests) ? var.web_desired_count : 0
   launch_type     = "FARGATE"
 
   network_configuration {
@@ -607,6 +747,13 @@ resource "aws_ecs_service" "web" {
     container_name   = "web"
     container_port   = 3000
   }
+
+  lifecycle {
+    precondition {
+      condition     = !var.enable_control_plane_services || local.has_digests
+      error_message = "Cannot enable control plane services without immutable image digests for API, Web, and Worker."
+    }
+  }
 }
 
 # Exactly one worker instance
@@ -615,12 +762,19 @@ resource "aws_ecs_service" "worker" {
   name            = "${local.name}-worker"
   cluster         = aws_ecs_cluster.control_plane.id
   task_definition = aws_ecs_task_definition.execution["worker"].arn
-  desired_count   = var.enable_control_plane_services ? 1 : 0
+  desired_count   = (var.enable_control_plane_services && local.has_digests) ? 1 : 0
   launch_type     = "FARGATE"
 
   network_configuration {
     subnets          = aws_subnet.app_private[*].id
     security_groups  = [aws_security_group.control_plane.id]
     assign_public_ip = false
+  }
+
+  lifecycle {
+    precondition {
+      condition     = !var.enable_control_plane_services || local.has_digests
+      error_message = "Cannot enable control plane services without immutable image digests for API, Web, and Worker."
+    }
   }
 }

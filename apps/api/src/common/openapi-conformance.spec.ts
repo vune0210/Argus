@@ -100,9 +100,9 @@ describe("OpenAPI / Nest Controller route conformance", () => {
     const deprecatedOpenApiRoutes: Array<{ method: string; path: string }> = [];
 
     for (const [path, pathItem] of Object.entries(openapi.paths as Record<string, any>)) {
-      for (const [method, operation] of Object.entries(pathItem)) {
+      for (const [method, operation] of Object.entries(pathItem as Record<string, any>)) {
         if (["parameters", "$ref"].includes(method)) continue;
-        if (operation.deprecated) {
+        if ((operation as { deprecated?: boolean })?.deprecated) {
           deprecatedOpenApiRoutes.push({ method: method.toLowerCase(), path });
         }
       }

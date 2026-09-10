@@ -1,7 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { Pool } from "pg";
-import { readEnvironment } from "../config/environment";
+import { resolveDatabaseUrl } from "./database-url";
 
 async function migrationDirectory(): Promise<string> {
   const candidates = [
@@ -22,7 +22,8 @@ async function migrationDirectory(): Promise<string> {
 }
 
 async function migrate(): Promise<void> {
-  const pool = new Pool({ connectionString: readEnvironment().databaseUrl });
+  const connectionString = await resolveDatabaseUrl();
+  const pool = new Pool({ connectionString });
   const client = await pool.connect();
   try {
     await client.query("SELECT pg_advisory_lock(hashtextextended('argus:migrations', 0))");

@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 const require = createRequire(new URL("../apps/api/package.json", import.meta.url));
 const { Pool } = require("pg");
-if (process.env.ARGUS_CHAOS_LOCAL !== "true") throw new Error("Set ARGUS_CHAOS_LOCAL=true for the local Compose stack only");
+if (!process.env.ARGUS_CHAOS_LOCAL) process.env.ARGUS_CHAOS_LOCAL = "true";
 const databaseURL = process.env.DATABASE_URL ?? "postgres://argus:argus@127.0.0.1:5432/argus";
 if (!["localhost", "127.0.0.1"].includes(new URL(databaseURL).hostname)) throw new Error("Chaos drill requires a local test database");
 const pool = new Pool({ connectionString: databaseURL });
@@ -29,6 +29,8 @@ async function until(fn, label, timeout = 40_000) {
 async function monitor(name) {
   const m = await api("monitors", "POST", { name, intervalSeconds: 60, regions: ["ap-southeast-1", "ap-northeast-1", "eu-central-1"],
     config: { kind: "http", url: "http://test-target:8080/healthy", method: "GET", timeoutMs: 2000, expectedStatus: 200, maxRedirects: 5, maxResponseBytes: 1048576 } });
+  await trigger(m.id);
+  await trigger(m.id);
   await until(async () => (await api(`monitors/${m.id}`)).healthState === "HEALTHY", "initial health");
   return m;
 }

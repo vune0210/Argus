@@ -18,7 +18,11 @@ const valid = {
 
 describe("monitor validation", () => {
   it("normalizes a valid HTTP monitor", () => {
-    expect(validateMonitorCreate(valid).config.url).toBe("https://example.com/health");
+    const res = validateMonitorCreate(valid);
+    expect(res.config.kind).toBe("http");
+    if (res.config.kind === "http") {
+      expect(res.config.url).toBe("https://example.com/health");
+    }
   });
 
   it("rejects an interval below 60 seconds", () => {

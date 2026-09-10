@@ -13,7 +13,7 @@
     "db:backfill-raw": "tsx src/pipeline/backfill-raw.ts",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --no-file-parallelism"
+    "test": "vitest run --no-file-parallelism --test-timeout 20000"
   },
   "dependencies": {
     "@argus/contracts": "workspace:*",

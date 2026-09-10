@@ -9,7 +9,7 @@ import { MonitorsService } from "../monitors/monitors.service";
 import { PipelineService } from "./pipeline.service";
 import { GROUP, RedisStreams, jobStream } from "./redis-streams";
 import { digestToken, probeKey } from "./probe-auth";
-import { backfillRawHistory } from "./raw-history";
+import { backfillRawHistory, maintainRawPartitions } from "./raw-history";
 
 const integration = process.env.DATABASE_URL && process.env.REDIS_URL ? describe : describe.skip;
 integration("execution pipeline: PostgreSQL and Redis", () => {
@@ -28,6 +28,7 @@ integration("execution pipeline: PostgreSQL and Redis", () => {
   const input = { name: "Pipeline integration", intervalSeconds: 60, regions,
     config: { kind: "http" as const, url: "https://example.com", method: "GET" as const, timeoutMs: 5000, expectedStatus: 200, maxRedirects: 5, maxResponseBytes: 1048576 } };
   beforeAll(async () => {
+    await maintainRawPartitions(pool);
     org = (await orgs.bootstrap({ id: user, email: "pipeline@example.test" })).organization.id;
     for (const [id, role] of [[viewer, "VIEWER"], [responder, "RESPONDER"]]) {
       await pool.query("INSERT INTO users(id,email) VALUES($1,'test@example.test')", [id]);
@@ -36,10 +37,18 @@ integration("execution pipeline: PostgreSQL and Redis", () => {
     for (const p of probes) await pool.query("INSERT INTO probe_agents(id,region,token_digest,is_development) VALUES($1,$2,$3,true)", [p.id,p.region,digestToken(`argp_${p.id}.test-integration-secret`,probeKey())]);
   });
   afterAll(async () => {
-    if (org) await pool.query("DELETE FROM organizations WHERE id=$1", [org]);
-    await pool.query("DELETE FROM users WHERE id=ANY($1)", [[user,viewer,responder]]);
-    await pool.query("DELETE FROM probe_agents WHERE id=ANY($1)", [probes.map((p) => p.id)]);
-    for (const r of regions) await streams.command(["DEL",jobStream(r),`${jobStream(r)}:dlq`]);
+    if (org) {
+      for (let i = 0; i < 5; i++) {
+        try { await pool.query("DELETE FROM organizations WHERE id=$1", [org]); break; }
+        catch { await new Promise((r) => setTimeout(r, 200)); }
+      }
+    }
+    await pool.query("DELETE FROM users WHERE id=ANY($1)", [[user, viewer, responder]]).catch(() => undefined);
+    try {
+      await pool.query("DELETE FROM execution_targets WHERE probe_id=ANY($1)", [probes.map((p) => p.id)]);
+      await pool.query("DELETE FROM probe_agents WHERE id=ANY($1)", [probes.map((p) => p.id)]);
+    } catch {}
+    for (const r of regions) await streams.command(["DEL", jobStream(r), `${jobStream(r)}:dlq`]).catch(() => undefined);
     await streams.onApplicationShutdown(); await pool.end();
   });
   async function create() {
@@ -61,7 +70,11 @@ integration("execution pipeline: PostgreSQL and Redis", () => {
       ...(outcome === "FAIL" ? { errorCode: "CONNECT" as const, errorMessage: "connect failed" } : { http: { statusCode: 200, responseBytes: 12 } }) };
   }
   async function take(index: number, executionId: string): Promise<ProbeLease> {
-    for (let i=0;i<50;i++) { const lease = await pipeline.lease(probes[index]!); if (lease?.job.executionId === executionId) return lease; }
+    for (let i = 0; i < 100; i++) {
+      const lease = await pipeline.lease(probes[index]!);
+      if (lease?.job.executionId === executionId) return lease;
+      await new Promise((r) => setTimeout(r, 50));
+    }
     throw new Error("Expected a lease for execution");
   }
   async function complete(id: string, outcomes: ("PASS" | "FAIL")[]) {
@@ -166,8 +179,11 @@ integration("execution pipeline: PostgreSQL and Redis", () => {
       const clean = await pipeline.snapshot(foreign.organization.id, foreignUser, own.id);
       expect(clean.regions.every((r) => r.heartbeat.lastSeenAt === null && r.executionId === null)).toBe(true);
     } finally {
-      await pool.query("DELETE FROM organizations WHERE id=$1", [foreign.organization.id]);
-      await pool.query("DELETE FROM users WHERE id=$1", [foreignUser]);
+      for (let i = 0; i < 5; i++) {
+        try { await pool.query("DELETE FROM organizations WHERE id=$1", [foreign.organization.id]); break; }
+        catch { await new Promise((r) => setTimeout(r, 200)); }
+      }
+      await pool.query("DELETE FROM users WHERE id=$1", [foreignUser]).catch(() => undefined);
     }
     await pool.query("UPDATE executions SET deadline_at=scheduled_at+interval '1 millisecond' WHERE id=$1", [e.id]); await pipeline.finalize();
   });

@@ -1,9 +1,10 @@
 import { Pool } from "pg";
-import { readEnvironment } from "../config/environment";
+import { resolveDatabaseUrl } from "../database/database-url";
 import { backfillRawHistory, maintainRawPartitions } from "./raw-history";
 
 async function main() {
-  const pool = new Pool({ connectionString: readEnvironment().databaseUrl });
+  const connectionString = await resolveDatabaseUrl();
+  const pool = new Pool({ connectionString });
   try {
     await maintainRawPartitions(pool);
     let total = 0;

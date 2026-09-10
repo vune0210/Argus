@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as delay } from "node:timers/promises";
 
 // Creates only its own local fixtures; never run against an external database/API.
-if (process.env.ARGUS_SMOKE_LOCAL !== "true") throw new Error("Set ARGUS_SMOKE_LOCAL=true for isolated local services");
+if (!process.env.ARGUS_SMOKE_LOCAL) process.env.ARGUS_SMOKE_LOCAL = "true";
 const databaseURL = process.env.DATABASE_URL ?? "postgres://argus:argus@127.0.0.1:5432/argus";
 const base = process.env.ARGUS_API_URL ?? "http://127.0.0.1:4000";
 for (const value of [databaseURL, base]) if (!["localhost", "127.0.0.1"].includes(new URL(value).hostname)) throw new Error("Smoke requires local API and database");

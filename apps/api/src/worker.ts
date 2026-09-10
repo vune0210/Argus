@@ -45,6 +45,7 @@ async function main(): Promise<void> {
         processedCount = typeof result === "number" ? result : Array.isArray(result) ? result.length : 1;
         metrics[`${name}_total`] = (metrics[`${name}_total`] ?? 0) + processedCount;
       } catch (error) {
+        console.error(`[Worker ${name} error]:`, error);
         metrics[`${name}_errors_total`] = (metrics[`${name}_errors_total`] ?? 0) + 1;
         safeErrorCode = error instanceof Error ? error.name : "UNKNOWN_ERROR";
       }

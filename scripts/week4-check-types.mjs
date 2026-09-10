@@ -31,7 +31,7 @@ async function main() {
   const { AppModule } = require("./dist/app.module.js");
   const { ErrorEnvelopeFilter } = require("./dist/common/error.filter.js");
   const { DATABASE_POOL } = require("./dist/database/database.module.js");
-  const { seedDevelopmentProbes } = require("./dist/pipeline/probe-auth.js");
+  const { seedDevelopmentProbes, digestToken, probeKey } = require("./dist/pipeline/probe-auth.js");
   const { PipelineService } = require("./dist/pipeline/pipeline.service.js");
 
   const app = await NestFactory.create(AppModule, { logger: false });
@@ -48,8 +48,18 @@ async function main() {
 
   const orgId = randomUUID();
   const userId = randomUUID();
-  const region = "ap-southeast-1";
-  const probeToken = `argp_dev-${region}.local-development-secret`;
+  const region = "check-types-reg";
+  const probeId = "dev-check-types";
+  const probeToken = "argp_dev-check-types.secret-token-for-testing-12345678";
+
+  // Register dedicated test probe
+  const tokenDigest = digestToken(probeToken, probeKey());
+  await pool.query(
+    `INSERT INTO probe_agents(id, region, token_digest, is_development)
+     VALUES ($1, $2, $3, true)
+     ON CONFLICT (id) DO UPDATE SET region = EXCLUDED.region, token_digest = EXCLUDED.token_digest`,
+    [probeId, region, tokenDigest],
+  );
 
   try {
     // Clean up any stale unpublished outbox events and clear test stream
@@ -176,6 +186,12 @@ async function main() {
       `HTTP=${httpRes.status}, TCP=${tcpRes.status}, SSL=${sslRes.status}, Keyword=${keywordRes.status}`,
     );
 
+    // Prevent background worker scheduler from auto-scheduling test monitors
+    await pool.query("UPDATE monitors SET next_run_at = now() + interval '1 day' WHERE organization_id = $1", [orgId]);
+    await pool.query("DELETE FROM execution_targets WHERE region = $1", [region]);
+    await pool.query("DELETE FROM outbox_events WHERE stream = $1", [`argus:v1:probe-jobs:${region}`]);
+    await redisStreams.command(["DEL", `argus:v1:probe-jobs:${region}`]);
+
     // -------------------------------------------------------------
     // Scenario 2: Validation rejection of invalid configurations
     // -------------------------------------------------------------
@@ -255,17 +271,20 @@ async function main() {
     // -------------------------------------------------------------
     // Scenario 3: Scheduler and probe leasing emits schema 0.1 for HTTP and 0.2 for new check types
     // -------------------------------------------------------------
+    // Clear queue before testing leasing
+    await redisStreams.command(["DEL", `argus:v1:probe-jobs:${region}`]);
+
     // Run execution for HTTP monitor
     await authedApi(`monitors/${httpData.id}/run`, "POST");
     await dispatchAll();
-    const httpLease = await pipelineService.lease({ id: `dev-${region}`, region });
+    const httpLease = await pipelineService.lease({ id: probeId, region });
     assert.ok(httpLease, "HTTP job should be leased");
     const httpSchemaPass = httpLease.job.schemaVersion === "0.1" && httpLease.job.config.kind === "http";
 
     // Run execution for TCP monitor
     await authedApi(`monitors/${tcpData.id}/run`, "POST");
     await dispatchAll();
-    const tcpLease = await pipelineService.lease({ id: `dev-${region}`, region });
+    const tcpLease = await pipelineService.lease({ id: probeId, region });
     assert.ok(tcpLease, "TCP job should be leased");
     const tcpSchemaPass = tcpLease.job.schemaVersion === "0.2" &&
       tcpLease.job.config.kind === "tcp" &&
@@ -275,7 +294,7 @@ async function main() {
     // Run execution for Keyword monitor
     await authedApi(`monitors/${keywordData.id}/run`, "POST");
     await dispatchAll();
-    const kwLease = await pipelineService.lease({ id: `dev-${region}`, region });
+    const kwLease = await pipelineService.lease({ id: probeId, region });
     assert.ok(kwLease, "Keyword job should be leased");
     const kwSchemaPass = kwLease.job.schemaVersion === "0.2" &&
       kwLease.job.config.kind === "keyword" &&
@@ -292,17 +311,18 @@ async function main() {
     // Scenario 4: Ingestion rejects result kind mismatch
     // -------------------------------------------------------------
     // Try to submit HTTP result for TCP leased job
+    const tcpSched = Date.parse(tcpLease.job.scheduledAt);
     const mismatchRes = await probeApi(`/${tcpLease.leaseId}/result`, "POST", {
       schemaVersion: "0.1",
       executionId: tcpLease.job.executionId,
       organizationId: tcpLease.job.organizationId,
       monitorId: tcpLease.job.monitorId,
       monitorVersion: tcpLease.job.monitorVersion,
-      probeId: `dev-${region}`,
+      probeId: probeId,
       region,
-      startedAt: new Date(Date.now() - 2000).toISOString(),
-      completedAt: new Date().toISOString(),
-      durationMs: 50,
+      startedAt: new Date(tcpSched + 10).toISOString(),
+      completedAt: new Date(tcpSched + 50).toISOString(),
+      durationMs: 40,
       outcome: "PASS",
       http: {
         statusCode: 200,
@@ -331,7 +351,7 @@ async function main() {
       organizationId: tcpLease.job.organizationId,
       monitorId: tcpLease.job.monitorId,
       monitorVersion: tcpLease.job.monitorVersion,
-      probeId: `dev-${region}`,
+      probeId: probeId,
       region,
       startedAt: new Date(schedTime + 10).toISOString(),
       completedAt: new Date(schedTime + 52).toISOString(),
@@ -422,6 +442,14 @@ async function main() {
     );
 
   } finally {
+    try {
+      await pool.query("DELETE FROM check_results c USING probe_results p, execution_targets t WHERE c.result_id = p.id AND p.target_id = t.id AND t.probe_id = $1", [probeId]);
+      await pool.query("DELETE FROM probe_results p USING execution_targets t WHERE p.target_id = t.id AND t.probe_id = $1", [probeId]);
+      await pool.query("DELETE FROM execution_targets WHERE probe_id = $1", [probeId]);
+      await pool.query("DELETE FROM probe_agents WHERE id = $1", [probeId]);
+    } catch (e) {
+      console.warn("Cleanup warning:", e.message);
+    }
     await app.close();
     await pool.end();
   }

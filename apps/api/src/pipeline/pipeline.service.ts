@@ -364,10 +364,24 @@ export class PipelineService {
       await client.query(`UPDATE execution_targets SET status='LEASED',attempts=attempts+1,lease_id=$2,probe_id=$3,
         lease_expires_at=$4,stream_id=$5 WHERE id=$1`, [targetId, leaseId, probe.id, expiresAt, entry.id]);
       await client.query("UPDATE executions SET status='RUNNING' WHERE id=$1", [execution.id]);
-      const jobSchemaVersion = (execution.config?.kind === "http" ? "0.1" : "0.2") as "0.1" | "0.2";
+      const kind = execution.config?.kind || "http";
+      const jobSchemaVersion = (kind === "http" ? "0.1" : "0.2") as "0.1" | "0.2";
+      const jobConfig = kind === "http"
+        ? Object.assign(
+            {
+              kind: "http",
+              method: "GET",
+              timeoutMs: 5000,
+              expectedStatus: 200,
+              maxRedirects: 5,
+              maxResponseBytes: 1048576,
+            },
+            execution.config,
+          )
+        : execution.config;
       return { leaseId, expiresAt, targetRegion: probe.region, job: { schemaVersion: jobSchemaVersion, executionId: execution.id,
         organizationId: execution.organization_id, monitorId: execution.monitor_id, monitorVersion: execution.monitor_version,
-        scheduledAt: execution.scheduled_at.toISOString(), deadlineAt: execution.deadline_at.toISOString(), config: execution.config } };
+        scheduledAt: execution.scheduled_at.toISOString(), deadlineAt: execution.deadline_at.toISOString(), config: jobConfig } };
     });
     if (ack) await this.streams.ack(probe.region, entry.id);
     return lease;
@@ -453,6 +467,10 @@ export class PipelineService {
         if (e.completed_at) return false;
         const now = (await client.query("SELECT clock_timestamp() AS time")).rows[0].time as Date;
         const targets = await client.query(`SELECT t.status,r.result FROM execution_targets t LEFT JOIN probe_results r ON r.target_id=t.id WHERE t.execution_id=$1`, [e.id]);
+        if (targets.rows.length === 0) {
+          await client.query("UPDATE executions SET status='COMPLETED',completed_at=$2 WHERE id=$1", [e.id, now]);
+          return false;
+        }
         if (e.deadline_at > now && targets.rows.some((t) => ["QUEUED", "LEASED"].includes(t.status))) return false;
         const observation = aggregate(targets.rows.map((t) => t.result?.outcome ?? null));
         await client.query("UPDATE execution_targets SET status='EXPIRED' WHERE execution_id=$1 AND status IN ('QUEUED','LEASED')", [e.id]);

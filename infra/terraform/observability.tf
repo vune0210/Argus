@@ -121,6 +121,12 @@ resource "aws_cloudwatch_dashboard" "argus" {
   })
 }
 
+# SNS Topic for Staging Alarms
+resource "aws_sns_topic" "staging_alarms" {
+  name = "${local.name}-alarms"
+  tags = { Name = "${local.name}-alarms" }
+}
+
 # 1. ALB 5xx Alarm
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   alarm_name          = "${local.name}-alb-high-5xx"
@@ -133,6 +139,8 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   threshold           = 10
   alarm_description   = "ALB target 5XX error count exceeds 10 per minute for 2 consecutive periods"
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.staging_alarms.arn]
+  ok_actions          = [aws_sns_topic.staging_alarms.arn]
 
   dimensions = {
     LoadBalancer = aws_lb.control_plane.arn_suffix
@@ -151,6 +159,8 @@ resource "aws_cloudwatch_metric_alarm" "ecs_task_restart" {
   threshold           = 90
   alarm_description   = "ECS memory utilization exceeds 90%, risking OOM restart"
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.staging_alarms.arn]
+  ok_actions          = [aws_sns_topic.staging_alarms.arn]
 
   dimensions = {
     ClusterName = aws_ecs_cluster.control_plane.name
@@ -169,6 +179,8 @@ resource "aws_cloudwatch_metric_alarm" "rds_health" {
   threshold           = 80
   alarm_description   = "RDS PostgreSQL CPU utilization exceeds 80% for 3 consecutive minutes"
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.staging_alarms.arn]
+  ok_actions          = [aws_sns_topic.staging_alarms.arn]
 
   dimensions = {
     DBInstanceIdentifier = aws_db_instance.postgres.identifier
@@ -187,6 +199,8 @@ resource "aws_cloudwatch_metric_alarm" "redis_health" {
   threshold           = 75
   alarm_description   = "ElastiCache Redis CPU utilization exceeds 75% for 3 consecutive minutes"
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.staging_alarms.arn]
+  ok_actions          = [aws_sns_topic.staging_alarms.arn]
 
   dimensions = {
     ReplicationGroupId = "${local.name}-execution"
@@ -205,6 +219,8 @@ resource "aws_cloudwatch_metric_alarm" "queue_depth" {
   threshold           = 50
   alarm_description   = "Worker queue depth exceeds 50 targets for 2 consecutive minutes"
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.staging_alarms.arn]
+  ok_actions          = [aws_sns_topic.staging_alarms.arn]
 
   dimensions = {
     Environment = var.environment
@@ -223,6 +239,8 @@ resource "aws_cloudwatch_metric_alarm" "notification_failures" {
   threshold           = 5
   alarm_description   = "Notification delivery failures exceed 5 within 1 minute"
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.staging_alarms.arn]
+  ok_actions          = [aws_sns_topic.staging_alarms.arn]
 
   dimensions = {
     Environment = var.environment
@@ -241,6 +259,8 @@ resource "aws_cloudwatch_metric_alarm" "stale_probe" {
   threshold           = 0
   alarm_description   = "One or more regional probes have stale heartbeats for 2 consecutive periods"
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.staging_alarms.arn]
+  ok_actions          = [aws_sns_topic.staging_alarms.arn]
 
   dimensions = {
     Environment = var.environment
